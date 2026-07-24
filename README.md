@@ -1,2 +1,0 @@
-# 6A.gaisouhann
-qwertyuiop
