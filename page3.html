@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物置部屋</title>
+
+<style>
+body{
+    font-family: sans-serif;
+    background:#f4f4f4;
+    margin:0;
+    padding:30px;
+}
+
+h1{
+    text-align:center;
+}
+
+.box{
+    max-width:700px;
+    margin:auto;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    margin:8px 0;
+    font-size:16px;
+    box-sizing:border-box;
+}
+
+button{
+    width:100%;
+    padding:12px;
+    font-size:16px;
+    background:#4CAF50;
+    color:white;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#43a047;
+}
+
+.item{
+    background:white;
+    margin-top:15px;
+    padding:15px;
+    border-radius:10px;
+    box-shadow:0 2px 5px rgba(0,0,0,.15);
+}
+
+.item img{
+    max-width:100%;
+    border-radius:8px;
+    margin-top:10px;
+}
+
+.item a{
+    word-break:break-all;
+}
+</style>
+</head>
+
+<body>
+
+<div class="box">
+
+<h1>物置部屋</h1>
+
+<input id="title" placeholder="タイトル">
+
+<input id="url" placeholder="URL">
+
+<button onclick="save()">保存</button>
+
+<div id="list"></div>
+
+</div>
+
+<script>
+
+let data = JSON.parse(localStorage.getItem("storage") || "[]");
+
+function save(){
+
+    const title = document.getElementById("title").value;
+    const url = document.getElementById("url").value;
+
+    if(title==="" || url==="") return;
+
+    data.unshift({
+        title:title,
+        url:url
+    });
+
+    localStorage.setItem("storage",JSON.stringify(data));
+
+    document.getElementById("title").value="";
+    document.getElementById("url").value="";
+
+    show();
+}
+
+function show(){
+
+    const list=document.getElementById("list");
+
+    list.innerHTML="";
+
+    data.forEach((d,i)=>{
+
+        let html=`
+        <div class="item">
+            <h3>${d.title}</h3>
+        `;
+
+        if(d.url.match(/\.(jpg|jpeg|png|gif|webp)$/i)){
+            html+=`<img src="${d.url}">`;
+        }else{
+            html+=`<a href="${d.url}" target="_blank">${d.url}</a>`;
+        }
+
+        html+=`<br><br>
+        <button onclick="removeItem(${i})">削除</button>
+        </div>`;
+
+        list.innerHTML+=html;
+
+    });
+
+}
+
+function removeItem(i){
+
+    data.splice(i,1);
+
+    localStorage.setItem("storage",JSON.stringify(data));
+
+    show();
+
+}
+
+show();
+
+</script>
+
+</body>
+</html>

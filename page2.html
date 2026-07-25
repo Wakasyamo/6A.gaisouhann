@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>回転スリット・アニメーション シミュレーター</title>
+<style>
+  body{
+    font-family: "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+    background:#111;
+    color:#eee;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:24px;
+    margin:0;
+  }
+  h1{font-size:20px;margin:0 0 6px 0;}
+  p.desc{color:#aaa;font-size:13px;margin-top:0;margin-bottom:20px;text-align:center;max-width:560px;line-height:1.6;}
+  .panel{
+    background:#1c1c1c;
+    border-radius:12px;
+    padding:18px 22px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    align-items:flex-start;
+    justify-content:center;
+    margin-bottom:22px;
+    max-width:760px;
+  }
+  .field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#ccc;}
+  input[type=file]{font-size:12px;color:#ccc;max-width:150px;}
+  input[type=number], input[type=range]{width:130px;}
+  button{
+    background:#4f8cff;
+    color:#fff;
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:14px;
+    height:38px;
+  }
+  button.secondary{background:#555;}
+  button.secondary:hover:not(:disabled){background:#444;}
+  button:hover:not(:disabled){background:#3b73e0;}
+  button:disabled{background:#555;cursor:not-allowed;opacity:.6;}
+  #imagesBox{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    background:#151515;
+    padding:10px 12px;
+    border-radius:8px;
+    min-width:220px;
+  }
+  .imgRow{display:flex;align-items:center;gap:8px;font-size:12px;color:#ccc;}
+  .imgRow label{width:56px;flex-shrink:0;}
+  .imgRow input[type=file]{flex:1;max-width:none;}
+  .removeImgBtn{
+    background:#7a2b2b;height:26px;width:26px;padding:0;border-radius:6px;font-size:14px;line-height:1;
+  }
+  .removeImgBtn:hover:not(:disabled){background:#953838;}
+  .addImgBtn{align-self:flex-start;font-size:12px;padding:6px 12px;height:auto;background:#2c5f2d;}
+  .addImgBtn:hover:not(:disabled){background:#357a36;}
+  #canvasWrap{
+    position:relative;
+    width:560px;
+    height:560px;
+    border-radius:50%;
+    overflow:hidden;
+    background:#000;
+    box-shadow:0 0 0 6px #333, 0 0 40px rgba(0,0,0,.6);
+  }
+  canvas{display:block;}
+  .status{font-size:12px;color:#888;margin-top:12px;text-align:center;max-width:560px;}
+  .val{color:#7fb2ff;font-weight:bold;}
+  .btnRow{display:flex;flex-direction:column;gap:8px;}
+  .hiddenFileInput{display:none;}
+</style>
+</head>
+<body>
+
+<h1>回転スリット・アニメーション シミュレーター</h1>
+<p class="desc">
+【使い方】<br>
+1.好きな画像を2枚用意して、選択してください。<br>
+2.「生成して開始」ボタンを押します。<br>
+3.スリットの回転速度や本数を微調整してください<br>
+4.動きが自然にみえるようになったら完璧。<br>
+【仕組み】<br>
+  複数枚(2枚以上)の画像を細かい扇形に分割し、画像を一枚に合成します。
+その上に白黒スリットの円盤を重ねて回転させると、画像が1枚ずつ順番に切り替わって見えます。
+動きがつながると一連のアニメーションが出来上がります。
+画像の枚数が増えるほど、1枚あたりが見えるスリットの開口幅は自動的に狭く調整されます。
+</p>
+
+<div class="panel">
+
+  <div id="imagesBox">
+    <div id="imageRowsContainer"></div>
+    <button type="button" id="addImgBtn" class="addImgBtn">+ 画像を追加</button>
+  </div>
+
+  <div class="field">
+    <label>スリットの本数(開口部の数)</label>
+    <input type="number" id="slitCount" value="720" min="8" max="2000" step="1">
+  </div>
+
+  <div class="field">
+    <label>回転速度 (°/フレーム)</label>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <input type="range" id="speed" min="-5" max="5" step="0.01" value="1.5">
+      <input type="number" id="speedNum" min="-5" max="5" step="0.01" value="1.5" style="width:70px;">
+    </div>
+  </div>
+
+  <div class="btnRow">
+    <button id="startBtn">生成して開始</button>
+    <button id="toggleBtn" disabled>一時停止</button>
+  </div>
+
+  <div class="field">
+    <label>録画時間(秒)</label>
+    <input type="number" id="recordDuration" min="1" max="60" step="1" value="5">
+  </div>
+
+  <div class="btnRow">
+    <button id="recordBtn" disabled>動画として出力</button>
+    <button id="saveProjectBtn" class="secondary" disabled>プロジェクトを保存</button>
+    <button id="loadProjectBtn" class="secondary">プロジェクトを読み込む</button>
+    <input type="file" id="loadProjectInput" class="hiddenFileInput" accept="application/json,.json">
+  </div>
+
+</div>
+
+<div id="canvasWrap">
+  <canvas id="mainCanvas" width="560" height="560"></canvas>
+</div>
+<div class="status" id="status">画像を2枚以上選択して「生成して開始」を押してください。</div>
+
+<script>
+const size = 560;
+const cx = size/2, cy = size/2;
+const radius = size/2 - 10;
+const MIN_IMAGES = 2;
+const MAX_IMAGES = 10;
+
+const mainCanvas = document.getElementById('mainCanvas');
+const ctx = mainCanvas.getContext('2d');
+
+const imageRowsContainer = document.getElementById('imageRowsContainer');
+const addImgBtn = document.getElementById('addImgBtn');
+const slitCountInput = document.getElementById('slitCount');
+const speedInput = document.getElementById('speed');
+const speedNum = document.getElementById('speedNum');
+const startBtn = document.getElementById('startBtn');
+const toggleBtn = document.getElementById('toggleBtn');
+const recordBtn = document.getElementById('recordBtn');
+const recordDurationInput = document.getElementById('recordDuration');
+const saveProjectBtn = document.getElementById('saveProjectBtn');
+const loadProjectBtn = document.getElementById('loadProjectBtn');
+const loadProjectInput = document.getElementById('loadProjectInput');
+const statusEl = document.getElementById('status');
+
+let compositeCanvas = null;
+let barPath = null;
+let angleDeg = 0;
+let animId = null;
+let running = false;
+let mediaRecorder = null;
+
+// 画像行の管理: 各行は { id, rowEl, fileInputEl, loadedDataURL }
+let imageRows = [];
+let rowIdSeq = 0;
+
+function relabelRows(){
+  imageRows.forEach((row, i)=>{
+    row.rowEl.querySelector('.idxLabel').textContent = (i+1);
+  });
+  // 最小枚数以下なら削除ボタンを無効化
+  const disableRemove = imageRows.length <= MIN_IMAGES;
+  imageRows.forEach(row=>{
+    row.removeBtnEl.disabled = disableRemove;
+  });
+  addImgBtn.disabled = imageRows.length >= MAX_IMAGES;
+}
+
+function addImageRow(loadedDataURL){
+  if(imageRows.length >= MAX_IMAGES) return null;
+  const id = 'row' + (rowIdSeq++);
+  const rowEl = document.createElement('div');
+  rowEl.className = 'imgRow';
+  rowEl.dataset.id = id;
+  rowEl.innerHTML =
+    '<label>画像<span class="idxLabel">' + (imageRows.length+1) + '</span></label>' +
+    '<input type="file" accept="image/*">' +
+    '<button type="button" class="removeImgBtn">×</button>';
+  imageRowsContainer.appendChild(rowEl);
+
+  const fileInputEl = rowEl.querySelector('input[type=file]');
+  const removeBtnEl = rowEl.querySelector('.removeImgBtn');
+
+  const row = { id, rowEl, fileInputEl, removeBtnEl, loadedDataURL: loadedDataURL || null };
+
+  fileInputEl.addEventListener('change', ()=>{
+    row.loadedDataURL = null; // 新しいファイルが選ばれたら読込済みデータは無視
+  });
+
+  removeBtnEl.addEventListener('click', ()=>{
+    if(imageRows.length <= MIN_IMAGES) return;
+    imageRows = imageRows.filter(r=>r.id !== id);
+    rowEl.remove();
+    relabelRows();
+  });
+
+  imageRows.push(row);
+  relabelRows();
+  return row;
+}
+
+// 初期状態: 2行を用意
+addImageRow();
+addImageRow();
+
+addImgBtn.addEventListener('click', ()=>addImageRow());
+
+// スライダーと数値入力を相互に同期
+speedInput.addEventListener('input', ()=>{
+  speedNum.value = speedInput.value;
+});
+speedNum.addEventListener('input', ()=>{
+  let v = parseFloat(speedNum.value);
+  if(isNaN(v)) return;
+  v = Math.max(-5, Math.min(5, v));
+  speedInput.value = v;
+});
+
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageFromDataURL(dataURL){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = reject;
+    img.src = dataURL;
+  });
+}
+
+// 各行から画像の dataURL を取得する(ファイル選択優先、なければ読込済みプロジェクトのデータを使う)
+async function getImageDataURLs(){
+  const urls = [];
+  for(const row of imageRows){
+    const f = row.fileInputEl.files[0];
+    if(f){
+      urls.push(await readFileAsDataURL(f));
+    } else if(row.loadedDataURL){
+      urls.push(row.loadedDataURL);
+    } else {
+      return null; // 未設定の画像がある
+    }
+  }
+  return urls;
+}
+
+// 画像を size x size の円領域いっぱいに「カバー」フィットで描画したキャンバスを作る
+function makeCoverCanvas(img){
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const cctx = c.getContext('2d');
+  const scale = Math.max(size/img.width, size/img.height);
+  const w = img.width*scale, h = img.height*scale;
+  const x = (size-w)/2, y = (size-h)/2;
+  cctx.drawImage(img, x, y, w, h);
+  return c;
+}
+
+// 指定インデックス群に対応する扇形(パイスライス)をまとめた Path2D を作る
+// w = 1スライスあたりの角度幅(度)
+function buildPiePath(indices, w){
+  const path = new Path2D();
+  for(const i of indices){
+    const a1 = (i*w - 90) * Math.PI/180;
+    const a2 = ((i+1)*w - 90) * Math.PI/180;
+    path.moveTo(cx, cy);
+    path.lineTo(cx + radius*Math.cos(a1), cy + radius*Math.sin(a1));
+    path.arc(cx, cy, radius, a1, a2);
+    path.closePath();
+  }
+  return path;
+}
+
+async function buildAll(){
+  statusEl.textContent = '画像を読み込んでいます...';
+
+  const dataURLs = await getImageDataURLs();
+  if(!dataURLs || dataURLs.length < MIN_IMAGES){
+    statusEl.textContent = `画像を${MIN_IMAGES}枚以上選択(またはプロジェクトを読み込み)してください。`;
+    return false;
+  }
+
+  const N = dataURLs.length; // 画像の枚数
+  const imgs = await Promise.all(dataURLs.map(loadImageFromDataURL));
+  const canvases = imgs.map(makeCoverCanvas);
+
+  let slits = parseInt(slitCountInput.value, 10);
+  if(!slits || slits < 8) slits = 720;
+  slits = Math.min(slits, 2000);
+
+  // 全セクター数 = スリット本数 × 画像枚数
+  // (画像が増えるほど、1枚分の開口幅は自動的に 1/N に狭くなる)
+  const totalSlices = slits * N;
+  const w = 360 / totalSlices; // 1セクターの角度幅(度)
+
+  // 合成画像: セクターkを画像(k % N)に割り当てる、風車状パターン
+  compositeCanvas = document.createElement('canvas');
+  compositeCanvas.width = size; compositeCanvas.height = size;
+  const compCtx = compositeCanvas.getContext('2d');
+
+  for(let m = 0; m < N; m++){
+    const idxM = [];
+    for(let k = m; k < totalSlices; k += N){
+      idxM.push(k);
+    }
+    const pathM = buildPiePath(idxM, w);
+    compCtx.save();
+    compCtx.clip(pathM);
+    compCtx.drawImage(canvases[m], 0, 0);
+    compCtx.restore();
+  }
+
+  // 遮蔽帯(黒いスリットのバー部分): 画像0のセクター以外をすべて覆う
+  // → 全体のうち 1/N だけが常に見えており、回転すると見える画像が順番に切り替わる
+  const barIdx = [];
+  for(let k = 0; k < totalSlices; k++){
+    if(k % N !== 0) barIdx.push(k);
+  }
+  barPath = buildPiePath(barIdx, w);
+
+  statusEl.textContent = `準備完了(画像 ${N} 枚 / スリット ${slits} 本 / 全 ${totalSlices} セクター)。アニメーション再生中...`;
+  recordBtn.disabled = false;
+  saveProjectBtn.disabled = false;
+  return true;
+}
+
+function drawFrame(){
+  ctx.clearRect(0,0,size,size);
+  ctx.drawImage(compositeCanvas, 0, 0);
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angleDeg * Math.PI/180);
+  ctx.translate(-cx, -cy);
+  ctx.fillStyle = '#000';
+  ctx.fill(barPath);
+  ctx.restore();
+
+  const speed = parseFloat(speedInput.value);
+  angleDeg = (angleDeg + speed) % 360;
+
+  animId = requestAnimationFrame(drawFrame);
+}
+
+function startAnimation(){
+  if(animId) cancelAnimationFrame(animId);
+  running = true;
+  toggleBtn.disabled = false;
+  toggleBtn.textContent = '一時停止';
+  drawFrame();
+}
+
+startBtn.addEventListener('click', async ()=>{
+  startBtn.disabled = true;
+  try{
+    const ok = await buildAll();
+    if(ok) startAnimation();
+  } finally {
+    startBtn.disabled = false;
+  }
+});
+
+toggleBtn.addEventListener('click', ()=>{
+  if(running){
+    cancelAnimationFrame(animId);
+    running = false;
+    toggleBtn.textContent = '再開';
+  } else {
+    running = true;
+    toggleBtn.textContent = '一時停止';
+    drawFrame();
+  }
+});
+
+recordBtn.addEventListener('click', ()=>{
+  if(!compositeCanvas){
+    alert('先に画像を生成してください。');
+    return;
+  }
+  if(!running){
+    alert('録画するにはアニメーションを再生してください。');
+    return;
+  }
+  if(typeof mainCanvas.captureStream !== 'function'){
+    alert('このブラウザは動画出力(captureStream)に対応していません。');
+    return;
+  }
+
+  let durationSec = parseFloat(recordDurationInput.value);
+  if(!durationSec || durationSec <= 0) durationSec = 5;
+  durationSec = Math.min(durationSec, 60);
+
+  const stream = mainCanvas.captureStream(60);
+  const candidates = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  let mimeType = '';
+  for(const c of candidates){
+    if(MediaRecorder.isTypeSupported(c)){ mimeType = c; break; }
+  }
+
+  const recordedChunks = [];
+  try{
+    mediaRecorder = mimeType ? new MediaRecorder(stream, {mimeType}) : new MediaRecorder(stream);
+  }catch(err){
+    alert('録画の開始に失敗しました: ' + err.message);
+    return;
+  }
+
+  mediaRecorder.ondataavailable = e => {
+    if(e.data && e.data.size > 0) recordedChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, {type: mimeType || 'video/webm'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'slit_animation.webm';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    statusEl.textContent = '動画の書き出しが完了しました(ダウンロードフォルダをご確認ください)。';
+    recordBtn.disabled = false;
+    recordBtn.textContent = '動画として出力';
+  };
+
+  mediaRecorder.start();
+  recordBtn.disabled = true;
+  recordBtn.textContent = `録画中... (${durationSec}秒)`;
+  statusEl.textContent = `録画中です。${durationSec}秒後に自動でダウンロードされます。`;
+
+  setTimeout(()=>{
+    if(mediaRecorder && mediaRecorder.state !== 'inactive'){
+      mediaRecorder.stop();
+    }
+  }, durationSec * 1000);
+});
+
+// ---- プロジェクトの保存 / 読み込み ----
+
+saveProjectBtn.addEventListener('click', async ()=>{
+  saveProjectBtn.disabled = true;
+  try{
+    const dataURLs = await getImageDataURLs();
+    if(!dataURLs){
+      alert('保存する前に、すべての画像を選択(または生成)してください。');
+      return;
+    }
+    const project = {
+      type: 'rotating-slit-animation-project',
+      version: 1,
+      slitCount: parseInt(slitCountInput.value, 10) || 720,
+      speed: parseFloat(speedInput.value) || 1.5,
+      images: dataURLs
+    };
+    const json = JSON.stringify(project);
+    const blob = new Blob([json], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'slit_animation_project.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    statusEl.textContent = 'プロジェクト(画像+設定)を保存しました。このファイルを読み込めば、いつでも同じアニメーションを再現できます。';
+  } catch(err){
+    alert('保存に失敗しました: ' + err.message);
+  } finally {
+    saveProjectBtn.disabled = false;
+  }
+});
+
+loadProjectBtn.addEventListener('click', ()=>{
+  loadProjectInput.click();
+});
+
+loadProjectInput.addEventListener('change', async ()=>{
+  const f = loadProjectInput.files[0];
+  if(!f) return;
+  try{
+    const text = await f.text();
+    const project = JSON.parse(text);
+    if(!project || !Array.isArray(project.images) || project.images.length < MIN_IMAGES){
+      alert('有効なプロジェクトファイルではありません。');
+      return;
+    }
+
+    // 既存の行をすべて削除してから、画像数ぶんの行を作り直す
+    imageRows.forEach(row=>row.rowEl.remove());
+    imageRows = [];
+
+    project.images.forEach(dataURL=>{
+      addImageRow(dataURL);
+    });
+
+    if(typeof project.slitCount === 'number'){
+      slitCountInput.value = project.slitCount;
+    }
+    if(typeof project.speed === 'number'){
+      speedInput.value = project.speed;
+      speedNum.value = project.speed;
+    }
+
+    statusEl.textContent = `プロジェクトを読み込みました(画像 ${project.images.length} 枚)。生成しています...`;
+
+    const ok = await buildAll();
+    if(ok) startAnimation();
+  } catch(err){
+    alert('読み込みに失敗しました: ' + err.message);
+  } finally {
+    loadProjectInput.value = '';
+  }
+});
+</script>
+</body>
+</html>
