@@ -34,12 +34,22 @@
     background: linear-gradient(180deg, var(--wall-top) 0%, var(--wall-bottom) 62%, var(--wall-bottom) 62%);
     overflow:hidden;
   }
+  #room-bg{
+    position:absolute; inset:0;
+    background-size:cover;
+    background-position:center;
+    transition: background-image .4s ease;
+  }
   #wall{
     position:absolute; left:0; right:0; top:0; height:62%;
     background:
       radial-gradient(ellipse 60% 90% at 50% 30%, rgba(255,210,140,0.16), transparent 65%),
       linear-gradient(180deg, var(--wall-top), var(--wall-bottom));
+    transition: opacity .4s ease;
   }
+  #stage.has-bg #wall{ opacity:0.32; }
+  #stage.has-bg #floor{ opacity:0.32; }
+  #stage.has-bg #window{ opacity:0; }
   #window{
     position:absolute; left:50%; top:12%;
     width:min(30vw,220px); height:min(40vh,260px);
@@ -48,6 +58,7 @@
     background: radial-gradient(circle at 50% 40%, #ffe9bd, #ffd28a 45%, #c98f52 75%, #7a5638 100%);
     box-shadow: 0 0 90px 30px rgba(255,210,140,0.25), inset 0 0 40px rgba(120,70,20,0.35);
     opacity:0.85;
+    transition: opacity .4s ease;
   }
   #window::before, #window::after{ content:''; position:absolute; background:rgba(60,40,30,0.55); }
   #window::before{ left:calc(50% - 2px); top:0; width:4px; height:100%; }
@@ -55,6 +66,7 @@
   #floor{
     position:absolute; left:0; right:0; bottom:0; height:38%;
     background: linear-gradient(180deg, var(--floor-far), var(--floor-near));
+    transition: opacity .4s ease;
   }
   #perspective-lines{ position:absolute; inset:0; pointer-events:none; }
   .mote{
@@ -204,6 +216,17 @@
   }
   #add-btn.show{ display:block; }
 
+  #bg-btn{
+    position:absolute; top:14px; left:14px; z-index:6;
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:700; font-size:12.5px;
+    background:rgba(20,14,30,0.55); color:var(--muted);
+    border:1px solid rgba(255,255,255,0.18);
+    padding:9px 14px; border-radius:999px;
+    backdrop-filter: blur(6px); cursor:pointer;
+  }
+  #bg-file-input{ display:none; }
+
   #drag-over{
     position:absolute; inset:0; z-index:10;
     background:rgba(255,139,107,0.18);
@@ -260,6 +283,7 @@
 <body>
 
 <div id="stage">
+  <div id="room-bg"></div>
   <div id="wall"><div id="window"></div></div>
   <div id="floor"><svg id="perspective-lines" width="100%" height="100%"></svg></div>
 </div>
@@ -274,6 +298,8 @@
 </div>
 
 <button id="add-btn">写真を追加</button>
+<button id="bg-btn">背景を変える</button>
+<input type="file" id="bg-file-input" accept="image/*">
 
 <div id="hint">
   <div id="hint-card">
@@ -303,11 +329,14 @@
 <script>
 (function(){
   const stage = document.getElementById('stage');
+  const roomBg = document.getElementById('room-bg');
   const introModal = document.getElementById('intro-modal');
   const startBtn = document.getElementById('start-btn');
   const hint = document.getElementById('hint');
   const pickBtn = document.getElementById('pick-btn');
   const addBtn = document.getElementById('add-btn');
+  const bgBtn = document.getElementById('bg-btn');
+  const bgFileInput = document.getElementById('bg-file-input');
   const fileInput = document.getElementById('file-input');
   const dragOverEl = document.getElementById('drag-over');
   const linesSvg = document.getElementById('perspective-lines');
@@ -374,6 +403,26 @@
     return {x:screenX, y, scale};
   }
   function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  // ---- 背景画像 ----
+  function setBackground(src, onFail){
+    const testImg = new Image();
+    testImg.onload = () => {
+      roomBg.style.backgroundImage = `url("${src}")`;
+      stage.classList.add('has-bg');
+    };
+    testImg.onerror = () => { if(onFail) onFail(); };
+    testImg.src = src;
+  }
+  function loadDefaultBackground(){
+    setBackground('kodomobeya.png');
+  }
+  function loadBackgroundFile(file){
+    if(!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => setBackground(e.target.result);
+    reader.readAsDataURL(file);
+  }
 
   function spawnMotes(){
     const frag = document.createDocumentFragment();
@@ -737,6 +786,12 @@
     fileInput.value = '';
   });
 
+  bgBtn.addEventListener('click', () => bgFileInput.click());
+  bgFileInput.addEventListener('change', (e) => {
+    if(e.target.files && e.target.files[0]) loadBackgroundFile(e.target.files[0]);
+    bgFileInput.value = '';
+  });
+
   ['dragenter','dragover'].forEach(evt=>{
     window.addEventListener(evt, (e)=>{ e.preventDefault(); dragOverEl.classList.add('show'); });
   });
@@ -757,6 +812,7 @@
   window.addEventListener('resize', computeGeometry);
   computeGeometry();
   spawnMotes();
+  loadDefaultBackground();
   requestAnimationFrame(loop);
 })();
 </script>
