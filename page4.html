@@ -66,19 +66,37 @@
   .subject-card .count{font-size:12px;color:var(--ink-soft);margin-top:6px;}
   .subject-card .del-btn{
     position:absolute;top:14px;right:12px;background:none;border:none;
-    color:#b7cdd4;font-size:16px;cursor:pointer;line-height:1;
-    opacity:0;transition:opacity .15s;
+    color:#b7cdd4;font-size:13px;cursor:pointer;line-height:1;
+    opacity:0;transition:opacity .15s, color .15s;
+    padding:4px 6px;border-radius:6px;
   }
   .subject-card:hover .del-btn{opacity:1;}
-  .subject-card .del-btn:hover{color:#e07a7a;}
+  .subject-card .del-btn:hover{color:#e07a7a;background:#fdecec;}
+  .subject-card .del-btn.confirming{
+    opacity:1;color:#c0392b;background:#fdecec;font-weight:700;font-size:11px;
+  }
 
   .add-card{
-    display:flex;align-items:center;justify-content:center;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
     border:2px dashed #a9d9e8;border-radius:14px;min-height:110px;
     color:var(--primary-dark);font-weight:700;cursor:pointer;
     background:transparent;font-family:'Zen Maru Gothic', sans-serif;font-size:15px;
+    padding:16px;
   }
   .add-card:hover{background:#e2f4fa;}
+  .add-card.editing{cursor:default;background:#fff;border-style:solid;}
+  .add-card input[type=text]{
+    width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+    font-size:14px;font-family:'Noto Sans JP', sans-serif;color:var(--ink);
+  }
+  .add-card .add-form-buttons{display:flex;gap:8px;width:100%;}
+  .add-card .add-form-buttons button{
+    flex:1;border:none;border-radius:8px;padding:7px 0;font-size:12.5px;font-weight:700;cursor:pointer;
+  }
+  .add-card .confirm-btn{background:var(--primary);color:#fff;}
+  .add-card .confirm-btn:hover{background:var(--primary-dark);}
+  .add-card .cancel-btn{background:#eef6f9;color:var(--ink-soft);}
+  .add-card .cancel-btn:hover{background:#dcedf3;}
 
   #subject-view{display:none;}
   .back-btn{
@@ -111,14 +129,6 @@
     box-shadow:0 4px 12px rgba(58,166,199,0.25);
   }
   .upload-btn-link:hover{background:var(--primary-dark);}
-  .upload-embed{
-    margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;
-  }
-  .upload-embed iframe{width:100%;height:260px;border:none;display:block;background:#fff;}
-  .upload-embed .embed-label{
-    font-size:11px;color:var(--ink-soft);background:var(--bg-soft);
-    padding:6px 12px;border-bottom:1px solid var(--line);
-  }
   .unset-note{
     background:var(--bg-soft);border:1px dashed var(--line);border-radius:10px;
     padding:12px 14px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;
@@ -169,7 +179,7 @@
       <div class="logo-tab"></div>
       <h1 class="title">勉強部屋</h1>
     </header>
-    <p class="subtitle">科目を選んで、教材のアップロードと閲覧をしよう</p>
+    <p class="subtitle">科目を選んで、教材のアップロードと閲覧をしよう。<br>受験は団体戦！</p>
     <div class="grid" id="subject-grid"></div>
   </div>
 
@@ -210,9 +220,9 @@
   //    このHTMLと同じリポジトリの「folder/科目名/」の中にあるPDFを自動取得します
   //    例）pdfs/国語/こくご1.pdf
   const GITHUB_CONFIG = {
-    enabled: true,
-    user: "Wakasyamo",
-    repo: "6A.gaisouhann",
+    enabled: false,
+    user: "your-github-username",
+    repo: "your-repo-name",
     branch: "main",
     folder: "pdfs"
   };
@@ -220,33 +230,41 @@
   // ② 新規アップロード先のGoogleドライブ フォルダ（科目名ごとに指定）
   //    フォルダの共有設定は「リンクを知っている全員」＋権限「編集者」にしてください
   //    そうすることで、このリンクを開いた人が直接ファイルをアップロードできます
+  //    ※フォルダの中身一覧は表示せず、ボタンのみ表示します（アップロードした人の名前が
+  //      画面に出ないようにするため。詳しくは会話内の説明をご覧ください）
   const DRIVE_UPLOAD_FOLDERS = {
-    "国語": "",
-    "数学": "",
-    "英語": "",
-    "理科": "https://drive.google.com/drive/folders/1PGZKY8dLZxkAN9yYYOPvFHcF85vZGciU?usp=sharing",
-    "社会": ""
+    "国語": "https://drive.google.com/drive/folders/1UPnYfrBrStQm9CA_DHcisjkst1B8QEC_?usp=sharing",
+    "数学": "https://drive.google.com/drive/folders/1NWyFrwLteOpnyfgZi4HRFDKzd9h5q3F7?usp=sharing",
+    "英語": "https://drive.google.com/drive/folders/14K80sHkrf4-qxe4VfvamETVWua0h74e2?usp=sharing",
+    "物理": "https://drive.google.com/drive/folders/1PGZKY8dLZxkAN9yYYOPvFHcF85vZGciU?usp=sharing",
+    "化学": "https://drive.google.com/drive/folders/1h88OMYs8ebHuITNoRByApeZ6AAJfvWfb?usp=sharing",
+    "日本史": "https://drive.google.com/drive/folders/1BvRIcS8skb2vQmH-GGeEHSxjE2CwnMZu?usp=sharing",
+    "世界史": "https://drive.google.com/drive/folders/1VbbXX8AtctGTh9fqvd6P61UOu1mq6NMu?usp=sharing",
+    "地理": "https://drive.google.com/drive/folders/1hopn6BqmjxV2bQvRGAG60kU122hqsPQ6?usp=sharing",
+    "政経": "https://drive.google.com/drive/folders/1ammpEykzEsL-IstMGdZLZraLzxpkD9I5?usp=sharing",
+    "過去問": "https://drive.google.com/drive/folders/1A_ab6Kv48MYoBRfCjz842DBSkblmT-1N?usp=sharing"
     // 新しい科目を追加した場合は、ここにも "科目名": "フォルダのURL" を追加してください
   };
 
-  const TAB_COLORS = ["#f6a5a5","#f9c66b","#8fd19e","#7ec8e3","#b39ddb","#f49ac2"];
-
-  let state = {
-    subjects: [
-      { id: cid(), name: "国語", color: TAB_COLORS[0], githubItems: [] },
-      { id: cid(), name: "数学", color: TAB_COLORS[1], githubItems: [] },
-      { id: cid(), name: "英語", color: TAB_COLORS[2], githubItems: [] },
-      { id: cid(), name: "理科", color: TAB_COLORS[3], githubItems: [] },
-      { id: cid(), name: "社会", color: TAB_COLORS[4], githubItems: [] },
-    ],
-    currentId: null
-  };
+  const TAB_COLORS = ["#f6a5a5","#f9c66b","#8fd19e","#7ec8e3","#b39ddb","#f49ac2","#ffab91","#a3d9a5","#90caf9","#ce93d8"];
 
   function cid(){ return 'id-' + Math.random().toString(36).slice(2,10); }
+
+  function makeSubject(name, idx){
+    return { id: cid(), name, color: TAB_COLORS[idx % TAB_COLORS.length], githubItems: [] };
+  }
+
+  let state = {
+    subjects: ["国語","数学","英語","物理","化学","日本史","世界史","地理","政経","過去問"]
+      .map((name, i) => makeSubject(name, i)),
+    currentId: null
+  };
 
   const homeView = document.getElementById('home-view');
   const subjectView = document.getElementById('subject-view');
   const grid = document.getElementById('subject-grid');
+
+  let addingSubject = false;
 
   function renderHome(){
     grid.innerHTML = '';
@@ -265,28 +283,73 @@
         openSubject(sub.id);
       });
       card.addEventListener('keydown', (e) => { if (e.key === 'Enter') openSubject(sub.id); });
-      card.querySelector('.del-btn').addEventListener('click', (e) => {
+
+      const delBtn = card.querySelector('.del-btn');
+      delBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (confirm(`「${sub.name}」を削除しますか？`)){
+        if (delBtn.classList.contains('confirming')){
           state.subjects = state.subjects.filter(s => s.id !== sub.id);
           renderHome();
+        } else {
+          delBtn.classList.add('confirming');
+          delBtn.textContent = '削除確定';
+          setTimeout(() => {
+            delBtn.classList.remove('confirming');
+            delBtn.textContent = '✕';
+          }, 3000);
         }
       });
       grid.appendChild(card);
     });
 
+    grid.appendChild(buildAddCard());
+  }
+
+  // prompt()を使わず、カード内に直接フォームを表示して科目を追加する
+  function buildAddCard(){
     const addCard = document.createElement('div');
     addCard.className = 'add-card';
-    addCard.textContent = '＋ 科目を追加';
-    addCard.addEventListener('click', () => {
-      const name = prompt('新しい科目名を入力してください');
-      if (name && name.trim()){
-        const color = TAB_COLORS[state.subjects.length % TAB_COLORS.length];
-        state.subjects.push({ id: cid(), name: name.trim(), color, githubItems: [] });
+
+    if (!addingSubject){
+      addCard.textContent = '＋ 科目を追加';
+      addCard.addEventListener('click', () => {
+        addingSubject = true;
         renderHome();
+        const input = document.getElementById('new-subject-input');
+        if (input) input.focus();
+      });
+      return addCard;
+    }
+
+    addCard.classList.add('editing');
+    addCard.innerHTML = `
+      <input type="text" id="new-subject-input" placeholder="科目名を入力">
+      <div class="add-form-buttons">
+        <button type="button" class="confirm-btn">追加</button>
+        <button type="button" class="cancel-btn">キャンセル</button>
+      </div>
+    `;
+
+    const input = addCard.querySelector('#new-subject-input');
+    const confirmAdd = () => {
+      const name = input.value.trim();
+      if (name){
+        state.subjects.push(makeSubject(name, state.subjects.length));
       }
+      addingSubject = false;
+      renderHome();
+    };
+    addCard.querySelector('.confirm-btn').addEventListener('click', confirmAdd);
+    addCard.querySelector('.cancel-btn').addEventListener('click', () => {
+      addingSubject = false;
+      renderHome();
     });
-    grid.appendChild(addCard);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') confirmAdd();
+      if (e.key === 'Escape'){ addingSubject = false; renderHome(); }
+    });
+
+    return addCard;
   }
 
   function openSubject(id){
@@ -316,6 +379,11 @@
   }
 
   // ---------- 「新しくアップロードする」エリア ----------
+  // ※ フォルダの中身一覧（embeddedfolderview）は表示しません。
+  //    Googleのその埋め込みウィジェットは「最終更新者」のアイコンが常に表示され、
+  //    こちら側でその表示だけを消すことができない（Google側の仕様で、外部サイトから
+  //    iframeの中身をCSS等で編集することはできません）ためです。
+  //    ボタン経由でDrive自体を開いてアップロードしてもらう方式にしています。
   function renderUploadArea(){
     const sub = getCurrentSubject();
     const area = document.getElementById('upload-area');
@@ -323,7 +391,7 @@
     const url = DRIVE_UPLOAD_FOLDERS[sub.name];
 
     if (!url){
-      desc.textContent = 'このHTMLで指定されたGoogleドライブのアップロード先が設定されると、ここにボタンとフォルダ内一覧が表示されます。';
+      desc.textContent = 'このHTMLで指定されたGoogleドライブのアップロード先が設定されると、ここにボタンが表示されます。';
       area.innerHTML = `
         <div class="unset-note">
           「${escapeHtml(sub.name)}」のアップロード先が未設定です。<br>
@@ -333,24 +401,7 @@
     }
 
     desc.textContent = '下のボタンからGoogleドライブのフォルダを開いて、教材を直接アップロードできます。';
-
-    const folderId = extractDriveFolderId(url);
-    const embedHtml = folderId
-      ? `<div class="upload-embed">
-           <div class="embed-label">フォルダの中身（自動更新）</div>
-           <iframe src="https://drive.google.com/embeddedfolderview?id=${folderId}#list" loading="lazy"></iframe>
-         </div>`
-      : '';
-
-    area.innerHTML = `
-      <a class="upload-btn-link" href="${url}" target="_blank" rel="noopener">📁 Googleドライブでアップロードする</a>
-      ${embedHtml}
-    `;
-  }
-
-  function extractDriveFolderId(url){
-    const m = url.match(/\/folders\/([-\w]{10,})/);
-    return m ? m[1] : null;
+    area.innerHTML = `<a class="upload-btn-link" href="${url}" target="_blank" rel="noopener">📁 Googleドライブでアップロードする</a>`;
   }
 
   // ---------- GitHubからのPDF自動読み込み（この科目の資料） ----------
@@ -446,11 +497,6 @@
 
       list.appendChild(card);
     });
-
-    // ホーム画面の件数表示を最新化
-    renderHome();
-    subjectView.style.display = 'block';
-    homeView.style.display = 'none';
   }
 
   function escapeHtml(str){
