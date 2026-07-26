@@ -129,13 +129,21 @@
     box-shadow:0 4px 12px rgba(58,166,199,0.25);
   }
   .upload-btn-link:hover{background:var(--primary-dark);}
+  .upload-btn-link{width:100%;justify-content:center;}
   .upload-embed{
     margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;
   }
-  .upload-embed iframe{width:100%;height:260px;border:none;display:block;background:#fff;}
+  .upload-embed iframe{width:100%;height:320px;border:none;display:block;background:#fff;}
   .upload-embed .embed-label{
     font-size:11px;color:var(--ink-soft);background:var(--bg-soft);
     padding:6px 12px;border-bottom:1px solid var(--line);
+  }
+  .embed-fallback-note{
+    font-size:11.5px;color:var(--ink-soft);background:var(--bg-soft);
+    padding:8px 12px;border-top:1px solid var(--line);line-height:1.6;
+  }
+  @media (max-width:640px){
+    .upload-embed iframe{height:380px;}
   }
   .unset-note{
     background:var(--bg-soft);border:1px dashed var(--line);border-radius:10px;
@@ -415,6 +423,7 @@
       ? `<div class="upload-embed">
            <div class="embed-label">フォルダの中身（自動更新）</div>
            <iframe src="https://drive.google.com/embeddedfolderview?id=${folderId}#list" loading="lazy"></iframe>
+           <div class="embed-fallback-note">スマートフォンでは、この一覧がうまく表示されない場合があります（Google側の仕様によるものです）。うまく表示されない時は、上の「Googleドライブでアップロードする」ボタンからDriveアプリ・ブラウザで直接フォルダを開いてください。</div>
          </div>`
       : '';
 
