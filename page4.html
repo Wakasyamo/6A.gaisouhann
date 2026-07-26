@@ -104,22 +104,32 @@
   }
   section.panel .desc{font-size:12.5px;color:var(--ink-soft);margin:0 0 16px;line-height:1.6;}
 
-  .drive-row{display:flex;gap:8px;}
-  .drive-row input[type=text]{
-    flex:1;padding:10px 14px;border-radius:10px;border:1px solid var(--line);
-    background:var(--bg-soft);font-size:13.5px;color:var(--ink);
+  .upload-btn-link{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--primary);color:#fff;text-decoration:none;
+    padding:11px 20px;border-radius:10px;font-weight:700;font-size:14px;
+    box-shadow:0 4px 12px rgba(58,166,199,0.25);
   }
-  .drive-row input[type=text]:focus{outline:2px solid var(--primary);}
-  .drive-row button{
-    background:var(--primary-dark);color:#fff;border:none;padding:10px 18px;
-    border-radius:10px;font-weight:700;font-size:13.5px;cursor:pointer;
+  .upload-btn-link:hover{background:var(--primary-dark);}
+  .upload-embed{
+    margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;
   }
-  .drive-row button:hover{background:#184f63;}
+  .upload-embed iframe{width:100%;height:260px;border:none;display:block;background:#fff;}
+  .upload-embed .embed-label{
+    font-size:11px;color:var(--ink-soft);background:var(--bg-soft);
+    padding:6px 12px;border-bottom:1px solid var(--line);
+  }
+  .unset-note{
+    background:var(--bg-soft);border:1px dashed var(--line);border-radius:10px;
+    padding:12px 14px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;
+  }
+  .unset-note code{background:#dff1f7;padding:1px 6px;border-radius:4px;}
 
   .status-row{
     display:flex;align-items:center;justify-content:space-between;
     background:var(--bg-soft);border:1px dashed var(--line);
     border-radius:10px;padding:10px 14px;font-size:12.5px;color:var(--ink-soft);
+    margin-bottom:16px;gap:10px;
   }
   .status-row button{
     background:var(--primary);color:#fff;border:none;padding:6px 14px;
@@ -127,7 +137,7 @@
   }
   .status-row button:hover{background:var(--primary-dark);}
 
-  .item-list{margin-top:16px;display:flex;flex-direction:column;gap:12px;}
+  .item-list{display:flex;flex-direction:column;gap:12px;}
   .item-card{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg-soft);}
   .item-card .item-head{
     display:flex;align-items:center;justify-content:space-between;padding:10px 14px;font-size:13.5px;gap:8px;
@@ -137,21 +147,18 @@
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;
   }
   .item-card .badge{
-    font-size:10.5px;background:var(--primary);color:#fff;padding:2px 8px;
+    font-size:10.5px;background:#4a5b78;color:#fff;padding:2px 8px;
     border-radius:999px;flex-shrink:0;
   }
-  .item-card .badge.drive{background:#5a9bd4;}
-  .item-card .badge.github{background:#4a5b78;}
   .item-card .item-actions{display:flex;gap:8px;flex-shrink:0;}
   .item-card .item-actions button, .item-card .item-actions a{
     font-size:12px;border:none;background:none;color:var(--primary-dark);
     cursor:pointer;text-decoration:underline;padding:0;white-space:nowrap;
   }
-  .item-card .item-actions .remove{color:#c96666;}
   .item-card .preview-box{display:none;border-top:1px solid var(--line);}
   .item-card .preview-box.open{display:block;}
-  .item-card iframe{width:100%;height:420px;border:none;display:block;background:#fff;}
-  .empty-note{font-size:13px;color:var(--ink-soft);padding:10px 2px;}
+  .item-card iframe.pdf-frame{width:100%;height:420px;border:none;display:block;background:#fff;}
+  .empty-note{font-size:13px;color:var(--ink-soft);padding:4px 2px;}
 </style>
 </head>
 <body>
@@ -162,7 +169,7 @@
       <div class="logo-tab"></div>
       <h1 class="title">勉強部屋</h1>
     </header>
-    <p class="subtitle">科目を選んで、PDFやGoogleドライブの資料をまとめよう</p>
+    <p class="subtitle">科目を選んで、教材のアップロードと閲覧をしよう</p>
     <div class="grid" id="subject-grid"></div>
   </div>
 
@@ -175,31 +182,18 @@
     </div>
 
     <section class="panel">
-      <h3>📁 リポジトリ内のPDF（自動読み込み）</h3>
-      <p class="desc">
-        このHTMLと同じGitHubリポジトリ内、<code id="folder-path-example">pdfs/科目名/</code> フォルダに置いたPDFを自動で一覧表示します。
-        ファイルを追加・削除した後は「再読み込み」を押してください。
-      </p>
-      <div class="status-row">
-        <span id="github-status">GitHub連携：未設定です（下記の設定方法を参照）</span>
-        <button id="github-refresh-btn">再読み込み</button>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h3>🔗 Googleドライブのリンクを追加</h3>
-      <p class="desc">
-        共有設定を「リンクを知っている全員が閲覧可」にしたリンクを貼ると、自動でプレビューを表示します。
-        フォルダのリンクを「編集者」権限で共有すれば、そのリンクを持つ人が自由にファイルを追加でき、内容は自動的に反映されます。
-      </p>
-      <div class="drive-row">
-        <input type="text" id="drive-input" placeholder="https://drive.google.com/file/d/........./view?usp=sharing">
-        <button id="drive-add-btn">追加</button>
-      </div>
+      <h3>📤 新しくアップロードする</h3>
+      <p class="desc" id="upload-desc"></p>
+      <div id="upload-area"></div>
     </section>
 
     <section class="panel">
       <h3>🗂 この科目の資料</h3>
+      <p class="desc">このHTMLと同じGitHubリポジトリ内のPDFを自動で一覧表示します（プレビュー付き）。</p>
+      <div class="status-row">
+        <span id="github-status">読み込み待機中</span>
+        <button id="github-refresh-btn">再読み込み</button>
+      </div>
       <div class="item-list" id="item-list"></div>
       <p class="empty-note" id="empty-note">まだ資料がありません。</p>
     </section>
@@ -209,32 +203,41 @@
 
 <script>
   // =====================================================================
-  // GitHub連携の設定
-  // このHTMLをGitHubリポジトリにアップロードして使う場合、以下を編集してください。
-  //   enabled : true にすると自動読み込みが有効になります
-  //   user    : あなたのGitHubユーザー名
-  //   repo    : リポジトリ名
-  //   branch  : ブランチ名（通常は "main"）
-  //   folder  : PDFを置くフォルダ名（この中に「科目名」のサブフォルダを作りPDFを置く）
-  //             例）pdfs/国語/こくご1.pdf
+  // 設定エリア（このHTMLを使う前に編集してください）
   // =====================================================================
+
+  // ① 資料を自動で一覧表示するためのGitHub設定
+  //    このHTMLと同じリポジトリの「folder/科目名/」の中にあるPDFを自動取得します
+  //    例）pdfs/国語/こくご1.pdf
   const GITHUB_CONFIG = {
-    enabled: false,
-    user: "your-github-username",
-    repo: "your-repo-name",
+    enabled: true,
+    user: "Wakasyamo",
+    repo: "6A.gaisouhann",
     branch: "main",
     folder: "pdfs"
+  };
+
+  // ② 新規アップロード先のGoogleドライブ フォルダ（科目名ごとに指定）
+  //    フォルダの共有設定は「リンクを知っている全員」＋権限「編集者」にしてください
+  //    そうすることで、このリンクを開いた人が直接ファイルをアップロードできます
+  const DRIVE_UPLOAD_FOLDERS = {
+    "国語": "",
+    "数学": "",
+    "英語": "",
+    "理科": "https://drive.google.com/drive/folders/1PGZKY8dLZxkAN9yYYOPvFHcF85vZGciU?usp=sharing",
+    "社会": ""
+    // 新しい科目を追加した場合は、ここにも "科目名": "フォルダのURL" を追加してください
   };
 
   const TAB_COLORS = ["#f6a5a5","#f9c66b","#8fd19e","#7ec8e3","#b39ddb","#f49ac2"];
 
   let state = {
     subjects: [
-      { id: cid(), name: "国語", color: TAB_COLORS[0], items: [], githubItems: [], githubStatus: "idle" },
-      { id: cid(), name: "数学", color: TAB_COLORS[1], items: [], githubItems: [], githubStatus: "idle" },
-      { id: cid(), name: "英語", color: TAB_COLORS[2], items: [], githubItems: [], githubStatus: "idle" },
-      { id: cid(), name: "理科", color: TAB_COLORS[3], items: [], githubItems: [], githubStatus: "idle" },
-      { id: cid(), name: "社会", color: TAB_COLORS[4], items: [], githubItems: [], githubStatus: "idle" },
+      { id: cid(), name: "国語", color: TAB_COLORS[0], githubItems: [] },
+      { id: cid(), name: "数学", color: TAB_COLORS[1], githubItems: [] },
+      { id: cid(), name: "英語", color: TAB_COLORS[2], githubItems: [] },
+      { id: cid(), name: "理科", color: TAB_COLORS[3], githubItems: [] },
+      { id: cid(), name: "社会", color: TAB_COLORS[4], githubItems: [] },
     ],
     currentId: null
   };
@@ -251,12 +254,11 @@
       const card = document.createElement('div');
       card.className = 'subject-card';
       card.tabIndex = 0;
-      const total = sub.items.length + sub.githubItems.length;
       card.innerHTML = `
         <div class="tab" style="background:${sub.color}"></div>
         <button class="del-btn" title="科目を削除">✕</button>
         <div class="name">${escapeHtml(sub.name)}</div>
-        <div class="count">${total} 件の資料</div>
+        <div class="count">${sub.githubItems.length} 件の資料</div>
       `;
       card.addEventListener('click', (e) => {
         if (e.target.classList.contains('del-btn')) return;
@@ -280,7 +282,7 @@
       const name = prompt('新しい科目名を入力してください');
       if (name && name.trim()){
         const color = TAB_COLORS[state.subjects.length % TAB_COLORS.length];
-        state.subjects.push({ id: cid(), name: name.trim(), color, items: [], githubItems: [], githubStatus: "idle" });
+        state.subjects.push({ id: cid(), name: name.trim(), color, githubItems: [] });
         renderHome();
       }
     });
@@ -292,10 +294,8 @@
     homeView.style.display = 'none';
     subjectView.style.display = 'block';
     renderSubjectHeader();
-    document.getElementById('folder-path-example').textContent =
-      `${GITHUB_CONFIG.folder}/${getCurrentSubject().name}/`;
+    renderUploadArea();
     loadGithubItems();
-    renderItemList();
     window.scrollTo(0,0);
   }
 
@@ -315,22 +315,59 @@
     document.getElementById('subject-tab-chip').style.background = sub.color;
   }
 
-  // ---------- GitHubからのPDF自動読み込み ----------
-  document.getElementById('github-refresh-btn').addEventListener('click', () => {
-    loadGithubItems();
-  });
+  // ---------- 「新しくアップロードする」エリア ----------
+  function renderUploadArea(){
+    const sub = getCurrentSubject();
+    const area = document.getElementById('upload-area');
+    const desc = document.getElementById('upload-desc');
+    const url = DRIVE_UPLOAD_FOLDERS[sub.name];
+
+    if (!url){
+      desc.textContent = 'このHTMLで指定されたGoogleドライブのアップロード先が設定されると、ここにボタンとフォルダ内一覧が表示されます。';
+      area.innerHTML = `
+        <div class="unset-note">
+          「${escapeHtml(sub.name)}」のアップロード先が未設定です。<br>
+          script内の <code>DRIVE_UPLOAD_FOLDERS</code> に <code>"${escapeHtml(sub.name)}": "フォルダのURL"</code> を追加してください。
+        </div>`;
+      return;
+    }
+
+    desc.textContent = '下のボタンからGoogleドライブのフォルダを開いて、教材を直接アップロードできます。';
+
+    const folderId = extractDriveFolderId(url);
+    const embedHtml = folderId
+      ? `<div class="upload-embed">
+           <div class="embed-label">フォルダの中身（自動更新）</div>
+           <iframe src="https://drive.google.com/embeddedfolderview?id=${folderId}#list" loading="lazy"></iframe>
+         </div>`
+      : '';
+
+    area.innerHTML = `
+      <a class="upload-btn-link" href="${url}" target="_blank" rel="noopener">📁 Googleドライブでアップロードする</a>
+      ${embedHtml}
+    `;
+  }
+
+  function extractDriveFolderId(url){
+    const m = url.match(/\/folders\/([-\w]{10,})/);
+    return m ? m[1] : null;
+  }
+
+  // ---------- GitHubからのPDF自動読み込み（この科目の資料） ----------
+  document.getElementById('github-refresh-btn').addEventListener('click', loadGithubItems);
 
   async function loadGithubItems(){
     const sub = getCurrentSubject();
     const statusEl = document.getElementById('github-status');
 
     if (!GITHUB_CONFIG.enabled){
-      statusEl.textContent = 'GitHub連携：未設定です（scriptタグ内のGITHUB_CONFIGを編集してください）';
+      statusEl.textContent = 'GitHub連携：未設定です（script内のGITHUB_CONFIGを編集してください）';
+      sub.githubItems = [];
+      renderItemList();
       return;
     }
 
     statusEl.textContent = '読み込み中…';
-    sub.githubStatus = 'loading';
 
     const path = `${GITHUB_CONFIG.folder}/${encodeURIComponent(sub.name)}`;
     const api = `https://api.github.com/repos/${GITHUB_CONFIG.user}/${GITHUB_CONFIG.repo}/contents/${path}?ref=${GITHUB_CONFIG.branch}`;
@@ -352,15 +389,13 @@
 
       sub.githubItems = pdfs.map(f => ({
         id: 'gh-' + f.sha,
-        type: 'github',
         name: f.name,
         embedUrl: f.download_url,
         rawUrl: f.download_url
       }));
 
-      statusEl.textContent = `GitHub連携：${pdfs.length} 件のPDFを読み込みました（${path}）`;
+      statusEl.textContent = `${pdfs.length} 件のPDFを読み込みました（${path}）`;
       renderItemList();
-      renderHomeCountsOnly();
     } catch(err){
       statusEl.textContent = '読み込み中にエラーが発生しました。ネットワークまたはリポジトリ設定をご確認ください。';
       sub.githubItems = [];
@@ -368,82 +403,27 @@
     }
   }
 
-  function renderHomeCountsOnly(){
-    // ホームに戻ったときの件数表示を最新化するため、次回のrenderHomeで反映される
-  }
-
-  // ---------- Googleドライブリンク追加 ----------
-  document.getElementById('drive-add-btn').addEventListener('click', addDriveLink);
-  document.getElementById('drive-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') addDriveLink();
-  });
-
-  function addDriveLink(){
-    const input = document.getElementById('drive-input');
-    const raw = input.value.trim();
-    if (!raw) return;
-
-    const parsed = parseDriveUrl(raw);
-    if (!parsed){
-      alert('Googleドライブのリンクとして認識できませんでした。共有リンクの形式をご確認ください。');
-      return;
-    }
-
-    const sub = getCurrentSubject();
-    sub.items.push({
-      id: cid(),
-      type: 'drive',
-      name: parsed.isFolder ? 'ドライブフォルダ' : 'ドライブファイル',
-      embedUrl: parsed.embedUrl,
-      rawUrl: raw
-    });
-    input.value = '';
-    renderItemList();
-  }
-
-  function parseDriveUrl(url){
-    let m;
-    m = url.match(/\/folders\/([-\w]{10,})/);
-    if (m) return { isFolder: true, embedUrl: `https://drive.google.com/embeddedfolderview?id=${m[1]}#list` };
-
-    m = url.match(/\/file\/d\/([-\w]{10,})/);
-    if (m) return { isFolder: false, embedUrl: `https://drive.google.com/file/d/${m[1]}/preview` };
-
-    m = url.match(/[?&]id=([-\w]{10,})/);
-    if (m) return { isFolder: false, embedUrl: `https://drive.google.com/file/d/${m[1]}/preview` };
-
-    return null;
-  }
-
-  // ---------- 資料一覧の描画 ----------
   function renderItemList(){
     const sub = getCurrentSubject();
     const list = document.getElementById('item-list');
     const emptyNote = document.getElementById('empty-note');
     list.innerHTML = '';
 
-    const allItems = [...sub.githubItems, ...sub.items];
-
-    if (allItems.length === 0){
+    if (sub.githubItems.length === 0){
       emptyNote.style.display = 'block';
       return;
     }
     emptyNote.style.display = 'none';
 
-    allItems.forEach(item => {
+    sub.githubItems.forEach(item => {
       const card = document.createElement('div');
       card.className = 'item-card';
-      const badgeLabel = item.type === 'github' ? 'PDF・GitHub' : (item.type === 'drive' ? 'Drive' : 'PDF');
-      const badgeClass = item.type;
-      const canRemove = item.type === 'drive';
-
       card.innerHTML = `
         <div class="item-head">
-          <div class="item-name"><span class="badge ${badgeClass}">${badgeLabel}</span>${escapeHtml(item.name)}</div>
+          <div class="item-name"><span class="badge">PDF</span>${escapeHtml(item.name)}</div>
           <div class="item-actions">
             <button class="toggle-preview">プレビュー</button>
             <a href="${item.rawUrl}" target="_blank" rel="noopener">開く</a>
-            ${canRemove ? '<button class="remove">削除</button>' : ''}
           </div>
         </div>
         <div class="preview-box"></div>
@@ -458,21 +438,19 @@
           previewBox.innerHTML = '';
           toggleBtn.textContent = 'プレビュー';
         } else {
-          previewBox.innerHTML = `<iframe src="${item.embedUrl}" loading="lazy"></iframe>`;
+          previewBox.innerHTML = `<iframe class="pdf-frame" src="${item.embedUrl}" loading="lazy"></iframe>`;
           previewBox.classList.add('open');
           toggleBtn.textContent = '閉じる';
         }
       });
 
-      if (canRemove){
-        card.querySelector('.remove').addEventListener('click', () => {
-          sub.items = sub.items.filter(i => i.id !== item.id);
-          renderItemList();
-        });
-      }
-
       list.appendChild(card);
     });
+
+    // ホーム画面の件数表示を最新化
+    renderHome();
+    subjectView.style.display = 'block';
+    homeView.style.display = 'none';
   }
 
   function escapeHtml(str){
