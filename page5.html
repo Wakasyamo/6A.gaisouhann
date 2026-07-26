@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>いきいきフォト部屋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --wall-top:#211735;
+    --wall-bottom:#3c2b52;
+    --floor-near:#4a3324;
+    --floor-far:#7a5638;
+    --glow:#ffd28a;
+    --accent:#ff8b6b;
+    --ink:#2b2130;
+    --paper:#f6efe4;
+    --muted:#cbb9a8cc;
+    --oni:#ff5252;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; width:100%; height:100%;
+    overflow:hidden; overscroll-behavior:none;
+    font-family:'Nunito', sans-serif;
+    background:#151022;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+  #stage{
+    position:fixed; inset:0;
+    background: linear-gradient(180deg, var(--wall-top) 0%, var(--wall-bottom) 62%, var(--wall-bottom) 62%);
+    overflow:hidden;
+  }
+  #wall{
+    position:absolute; left:0; right:0; top:0; height:62%;
+    background:
+      radial-gradient(ellipse 60% 90% at 50% 30%, rgba(255,210,140,0.16), transparent 65%),
+      linear-gradient(180deg, var(--wall-top), var(--wall-bottom));
+  }
+  #window{
+    position:absolute; left:50%; top:12%;
+    width:min(30vw,220px); height:min(40vh,260px);
+    transform:translateX(-50%);
+    border-radius:14px;
+    background: radial-gradient(circle at 50% 40%, #ffe9bd, #ffd28a 45%, #c98f52 75%, #7a5638 100%);
+    box-shadow: 0 0 90px 30px rgba(255,210,140,0.25), inset 0 0 40px rgba(120,70,20,0.35);
+    opacity:0.85;
+  }
+  #window::before, #window::after{ content:''; position:absolute; background:rgba(60,40,30,0.55); }
+  #window::before{ left:calc(50% - 2px); top:0; width:4px; height:100%; }
+  #window::after{ top:calc(50% - 2px); left:0; height:4px; width:100%; }
+  #floor{
+    position:absolute; left:0; right:0; bottom:0; height:38%;
+    background: linear-gradient(180deg, var(--floor-far), var(--floor-near));
+  }
+  #perspective-lines{ position:absolute; inset:0; pointer-events:none; }
+  .mote{
+    position:absolute; border-radius:50%;
+    background: rgba(255,225,180,0.55);
+    filter: blur(0.5px);
+    animation: float 9s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes float{
+    0%,100%{ transform:translateY(0px); opacity:.25; }
+    50%{ transform:translateY(-22px); opacity:.75; }
+  }
+
+  .shadow{
+    position:absolute; left:0; top:0;
+    width:80px; height:22px;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0.45), rgba(0,0,0,0) 72%);
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    will-change: transform, opacity;
+  }
+  .pet-wrap{
+    position:absolute; left:0; top:0;
+    will-change: transform;
+    cursor:pointer;
+  }
+  .pet-wrap.oni .pet{
+    box-shadow: 0 0 0 4px var(--oni), 0 10px 24px rgba(0,0,0,0.45);
+  }
+  .pet-wrap.oni::after{
+    content:'鬼';
+    position:absolute; top:-30px; left:50%; transform:translateX(-50%);
+    background:var(--oni); color:#fff; font-family:'Zen Maru Gothic',sans-serif;
+    font-weight:900; font-size:12px; padding:2px 7px; border-radius:8px;
+  }
+  .pet{
+    display:block;
+    max-width:220px; max-height:220px;
+    border:6px solid #fdfaf3;
+    border-radius:10px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.45), 0 2px 0 rgba(255,255,255,0.6) inset;
+    background:#fdfaf3;
+    transform-origin: 50% 100%;
+    user-select:none;
+    -webkit-user-drag:none;
+  }
+  .bubble{
+    position:absolute; left:0; top:0;
+    transform:translate(-50%,-100%);
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:700;
+    font-size:14px;
+    padding:8px 13px;
+    border-radius:16px;
+    box-shadow:0 6px 16px rgba(0,0,0,0.35);
+    white-space:nowrap;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity .18s ease, transform .18s ease;
+    z-index:9999;
+  }
+  .bubble::after{
+    content:'';
+    position:absolute; left:50%; bottom:-8px;
+    width:14px; height:14px;
+    background:var(--paper);
+    transform:translateX(-50%) rotate(45deg);
+    border-radius:2px;
+  }
+  .bubble.show{ opacity:1; transform:translate(-50%,-118%); }
+
+  /* イントロ（付喪神）モーダル */
+  #intro-modal{
+    position:fixed; inset:0; z-index:30;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(10,6,18,0.72);
+    padding:20px;
+  }
+  #intro-modal.hidden{ display:none; }
+  #intro-card{
+    background:linear-gradient(180deg, #fbf3e4, #f2e4cd);
+    border-radius:22px;
+    padding:34px 28px 28px;
+    max-width:380px;
+    text-align:center;
+    box-shadow:0 30px 70px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,210,140,0.5);
+    position:relative;
+  }
+  #intro-emoji{ font-size:40px; margin-bottom:6px; }
+  #intro-card h1{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:21px; margin:0 0 12px; color:var(--ink); line-height:1.5;
+  }
+  #intro-card p{
+    font-size:13.5px; color:#6c5a4a; margin:0 0 22px; line-height:1.75;
+  }
+  #start-btn{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:700; font-size:16px;
+    background:var(--accent); color:#fff; border:none;
+    padding:13px 34px; border-radius:999px;
+    box-shadow:0 6px 18px rgba(255,139,107,0.5);
+    cursor:pointer;
+  }
+  #start-btn:active{ transform:translateY(1px); }
+
+  /* アップロードUI */
+  #hint{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    z-index:5; text-align:center; padding:24px;
+  }
+  #hint.hidden{ display:none; }
+  #hint-card{
+    background:rgba(246,239,228,0.96);
+    border-radius:20px; padding:32px 28px; max-width:340px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.5);
+  }
+  #hint-card h2{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:19px; margin:0 0 6px; color:var(--ink);
+  }
+  #hint-card p{ font-size:13.5px; color:#6c5a4a; margin:0 0 18px; line-height:1.6; }
+  #pick-btn{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:700; font-size:15px;
+    background:var(--accent); color:#fff; border:none;
+    padding:12px 26px; border-radius:999px;
+    box-shadow:0 6px 16px rgba(255,139,107,0.45);
+    cursor:pointer;
+  }
+  #pick-btn:active{ transform:translateY(1px); }
+  #file-input{ display:none; }
+
+  #add-btn{
+    position:absolute; top:14px; right:14px; z-index:6;
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:700; font-size:12.5px;
+    background:rgba(20,14,30,0.55); color:var(--muted);
+    border:1px solid rgba(255,255,255,0.18);
+    padding:9px 14px; border-radius:999px;
+    backdrop-filter: blur(6px); cursor:pointer;
+    display:none;
+  }
+  #add-btn.show{ display:block; }
+
+  #drag-over{
+    position:absolute; inset:0; z-index:10;
+    background:rgba(255,139,107,0.18);
+    border:3px dashed rgba(255,255,255,0.6);
+    display:none; align-items:center; justify-content:center;
+    color:#fff; font-family:'Zen Maru Gothic', sans-serif; font-size:18px;
+    pointer-events:none;
+  }
+  #drag-over.show{ display:flex; }
+
+  /* 命令バー */
+  #command-bar{
+    position:absolute; left:0; right:0; bottom:0; z-index:8;
+    display:flex; flex-direction:column; gap:8px;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, rgba(20,14,30,0) 0%, rgba(15,10,22,0.85) 35%, rgba(15,10,22,0.92) 100%);
+  }
+  #command-chips{
+    display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;
+  }
+  #command-chips button{
+    flex:0 0 auto;
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:700; font-size:12px;
+    background:rgba(255,255,255,0.12); color:#fbf3e4;
+    border:1px solid rgba(255,255,255,0.22);
+    padding:7px 13px; border-radius:999px; cursor:pointer;
+    white-space:nowrap;
+  }
+  #command-chips button:active{ background:var(--accent); }
+  #command-form{ display:flex; gap:8px; }
+  #command-input{
+    flex:1; min-width:0;
+    font-family:'Nunito', sans-serif;
+    font-size:14px;
+    padding:11px 14px; border-radius:999px; border:none;
+    background:rgba(255,255,255,0.94); color:var(--ink);
+  }
+  #command-input:focus{ outline:2px solid var(--accent); }
+  #command-form button{
+    font-family:'Zen Maru Gothic', sans-serif; font-weight:700; font-size:13px;
+    background:var(--accent); color:#fff; border:none;
+    padding:0 18px; border-radius:999px; cursor:pointer;
+  }
+  #command-feedback{
+    min-height:16px;
+    font-family:'Zen Maru Gothic', sans-serif; font-size:12px;
+    color:var(--glow); text-align:center;
+    opacity:0; transition:opacity .25s ease;
+  }
+  #command-feedback.show{ opacity:1; }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="wall"><div id="window"></div></div>
+  <div id="floor"><svg id="perspective-lines" width="100%" height="100%"></svg></div>
+</div>
+
+<div id="intro-modal">
+  <div id="intro-card">
+    <div id="intro-emoji">🏮</div>
+    <h1>付喪神の力で、<br>昔の写真(思い出)に<br>命を吹き込もう</h1>
+    <p>長い時を経たモノには魂が宿るという「付喪神」の伝説。<br>大切な写真を選べば、この部屋の中で思い出が動き出します。</p>
+    <button id="start-btn">はじめる</button>
+  </div>
+</div>
+
+<button id="add-btn">写真を追加</button>
+
+<div id="hint">
+  <div id="hint-card">
+    <h2>写真に命を吹き込む</h2>
+    <p>好きな写真を選ぶと、この部屋の住人になります。<br>複数枚まとめて選んでもOKです。<br>タップでおしゃべりし、命令すると動きが変わります。</p>
+    <button id="pick-btn">写真を選ぶ</button>
+  </div>
+</div>
+<input type="file" id="file-input" accept="image/*" multiple>
+<div id="drag-over">ここに写真をドロップ 📷</div>
+
+<div id="command-bar">
+  <div id="command-chips">
+    <button data-cmd="roll">🌀 転がって</button>
+    <button data-cmd="line">📏 整列して</button>
+    <button data-cmd="tag">🏃 鬼ごっこして</button>
+    <button data-cmd="stop">✋ しばらく止まって</button>
+    <button data-cmd="free">🌿 自由にして</button>
+  </div>
+  <form id="command-form">
+    <input id="command-input" type="text" placeholder="命令してみよう（例：整列して）" autocomplete="off">
+    <button type="submit">送信</button>
+  </form>
+  <div id="command-feedback"></div>
+</div>
+
+<script>
+(function(){
+  const stage = document.getElementById('stage');
+  const introModal = document.getElementById('intro-modal');
+  const startBtn = document.getElementById('start-btn');
+  const hint = document.getElementById('hint');
+  const pickBtn = document.getElementById('pick-btn');
+  const addBtn = document.getElementById('add-btn');
+  const fileInput = document.getElementById('file-input');
+  const dragOverEl = document.getElementById('drag-over');
+  const linesSvg = document.getElementById('perspective-lines');
+  const commandForm = document.getElementById('command-form');
+  const commandInput = document.getElementById('command-input');
+  const commandChips = document.getElementById('command-chips');
+  const commandFeedback = document.getElementById('command-feedback');
+
+  const PHRASES = [
+    "やあ!", "ねえねえ、聞いて", "ここ、居心地いいね", "お腹すいた…",
+    "つんつんしないで〜", "今日もいい天気かな?", "ちょっと眠くなってきた",
+    "遊ぼうよ!", "どこ行こうかな", "わっ、びっくりした!", "ふふん♪",
+    "そこ、気になる…", "もっと構ってー", "すー…はー…深呼吸", "ジャンプ得意なんだ",
+    "この部屋、探検中!", "まだここにいるよ", "ねえ、今何時?", "ちょっと休憩...",
+    "きらきら光ってる!", "こっち見て〜", "なんだか楽しい気分!"
+  ];
+
+  // ---- ジオメトリ ----
+  let W=0,H=0, horizonY=0, floorFrontY=0, floorFrontHalfW=0, backHalfW=0, centerX=0;
+  function computeGeometry(){
+    W = window.innerWidth; H = window.innerHeight;
+    horizonY = H*0.36;
+    floorFrontY = H*0.92;
+    floorFrontHalfW = W*0.46;
+    backHalfW = Math.max(W*0.05, 16);
+    centerX = W*0.5;
+    drawPerspectiveLines();
+  }
+  function drawPerspectiveLines(){
+    const floorH = H - (H*0.62);
+    linesSvg.setAttribute('viewBox', `0 0 ${W} ${floorH}`);
+    linesSvg.innerHTML = '';
+    const ns='http://www.w3.org/2000/svg';
+    const steps = 7;
+    for(let i=0;i<=steps;i++){
+      const fx = (i/steps - 0.5) * (W*0.98);
+      const line = document.createElementNS(ns,'line');
+      line.setAttribute('x1', centerX + fx*0.06);
+      line.setAttribute('y1', 0);
+      line.setAttribute('x2', centerX + fx);
+      line.setAttribute('y2', floorH);
+      line.setAttribute('stroke','rgba(255,225,180,0.08)');
+      line.setAttribute('stroke-width','1');
+      linesSvg.appendChild(line);
+    }
+    for(let j=1;j<5;j++){
+      const y = floorH*(j/5)*(j/5);
+      const w = (backHalfW + (floorFrontHalfW-backHalfW)*(j/5));
+      const line = document.createElementNS(ns,'line');
+      line.setAttribute('x1', centerX - w);
+      line.setAttribute('y1', y);
+      line.setAttribute('x2', centerX + w);
+      line.setAttribute('y2', y);
+      line.setAttribute('stroke','rgba(255,225,180,0.06)');
+      line.setAttribute('stroke-width','1');
+      linesSvg.appendChild(line);
+    }
+  }
+  function project(d,x){
+    const y = floorFrontY + (horizonY - floorFrontY) * d;
+    const halfW = floorFrontHalfW + (backHalfW - floorFrontHalfW) * d;
+    const screenX = centerX + x * halfW;
+    const scale = 1 + (0.34 - 1) * d;
+    return {x:screenX, y, scale};
+  }
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  function spawnMotes(){
+    const frag = document.createDocumentFragment();
+    for(let i=0;i<10;i++){
+      const m = document.createElement('div');
+      m.className='mote';
+      const size = 2+Math.random()*3;
+      m.style.width = size+'px'; m.style.height = size+'px';
+      m.style.left = (10+Math.random()*80)+'%';
+      m.style.top = (8+Math.random()*40)+'%';
+      m.style.animationDelay = (Math.random()*8)+'s';
+      m.style.animationDuration = (7+Math.random()*6)+'s';
+      frag.appendChild(m);
+    }
+    document.getElementById('wall').appendChild(frag);
+  }
+
+  // ---- 住人（複数対応） ----
+  let pets = [];
+  let petIdCounter = 0;
+  let activeCommand = null; // {type, until?, oniId?, tagCooldownUntil?}
+
+  function createPetElements(){
+    const wrap = document.createElement('div'); wrap.className='pet-wrap';
+    const img = document.createElement('img'); img.className='pet'; img.draggable=false; img.alt='生きている写真';
+    wrap.appendChild(img);
+    const shadow = document.createElement('div'); shadow.className='shadow';
+    const bubble = document.createElement('div'); bubble.className='bubble';
+    stage.appendChild(shadow);
+    stage.appendChild(wrap);
+    stage.appendChild(bubble);
+    return {wrap, img, shadow, bubble};
+  }
+
+  function addPetFromSrc(src){
+    const els = createPetElements();
+    const id = petIdCounter++;
+    els.img.onload = () => {
+      const p = {
+        id, wrapEl: els.wrap, imgEl: els.img, shadowEl: els.shadow, bubbleEl: els.bubble,
+        aspect: (els.img.naturalWidth / els.img.naturalHeight) || 1,
+        d: 0.25 + Math.random()*0.5, x: (Math.random()*2-1)*0.6,
+        targetD: 0.5, targetX: 0,
+        mode: 'idle', idleTimer: 0.2 + Math.random()*0.6,
+        bouncePhase: 0, facing: Math.random()<0.5?-1:1, lean: 0, reactPulse: 0,
+        vd: 0, vx: 0, rollAngle: 0,
+        aligned: false, slotD: 0.5, slotX: 0,
+        fleeTimer: 0, bubbleTimer: null, _breathe: 0
+      };
+      pets.push(p);
+      els.wrap.addEventListener('click', (e) => { e.stopPropagation(); speak(p); });
+      hint.classList.add('hidden');
+      addBtn.classList.add('show');
+      if(activeCommand && activeCommand.type === 'line'){
+        assignSlots();
+        pets.forEach(pp => pp.aligned = false);
+      }
+    };
+    els.img.onerror = () => {
+      stage.removeChild(els.wrap); stage.removeChild(els.shadow); stage.removeChild(els.bubble);
+      if(pets.length === 0) hint.classList.remove('hidden');
+    };
+    els.img.src = src;
+  }
+
+  function loadImageFiles(fileList){
+    Array.from(fileList).forEach(file => {
+      if(!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (e) => addPetFromSrc(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---- 見守りループ ----
+  function speak(p, forcedText){
+    const phrase = forcedText || PHRASES[Math.floor(Math.random()*PHRASES.length)];
+    p.bubbleEl.textContent = phrase;
+    p.bubbleEl.classList.add('show');
+    p.reactPulse = Math.max(p.reactPulse, 0.14);
+    clearTimeout(p.bubbleTimer);
+    p.bubbleTimer = setTimeout(()=> p.bubbleEl.classList.remove('show'), 2000);
+  }
+
+  function pickNewTarget(p){
+    p.targetD = 0.08 + Math.random()*0.86;
+    p.targetX = (Math.random()*2-1) * 0.85;
+    const r = Math.random();
+    if(r < 0.34){ p.roamMode='dash'; p.roamSpeed=0.62; }
+    else if(r < 0.68){ p.roamMode='hop'; p.roamSpeed=0.42; }
+    else { p.roamMode='walk'; p.roamSpeed=0.28; }
+    p.bouncePhase = 0;
+    p.mode = p.roamMode;
+  }
+  function goIdleRoam(p){
+    p.mode = 'idle';
+    p.idleTimer = 0.6 + Math.random()*1.8;
+    p.aligned = false;
+  }
+
+  function moveToward(p, dt, targetD, targetX, speed, mode){
+    p.targetD = targetD; p.targetX = targetX;
+    const dD = targetD - p.d, dX = targetX - p.x;
+    const dist = Math.hypot(dD, dX*0.6);
+    if(dist < 0.02){ p.d = targetD; p.x = targetX; p.mode = mode; return true; }
+    const step = Math.min(dist, speed*dt);
+    const nD = dD/dist, nX = dX/dist;
+    p.d += nD*step; p.x += nX*step;
+    if(Math.abs(nX) > 0.05) p.facing = nX > 0 ? 1 : -1;
+    const targetLean = p.facing * (mode==='dash' ? 0.5 : 0.25);
+    p.lean += (targetLean - p.lean) * Math.min(1, dt*8);
+    const phaseSpeed = mode==='dash' ? 4.2 : mode==='hop' ? 5.4 : 6.4;
+    p.bouncePhase += dt*phaseSpeed; if(p.bouncePhase > 1) p.bouncePhase -= 1;
+    p.d = clamp(p.d, 0.03, 0.97); p.x = clamp(p.x, -0.95, 0.95);
+    p.mode = mode;
+    return false;
+  }
+
+  function updateRoam(p, dt){
+    if(p.mode === 'idle'){
+      p.idleTimer -= dt;
+      p.lean += (0 - p.lean) * Math.min(1, dt*6);
+      p._breathe = Math.sin(performance.now()/700) * 0.015;
+      if(p.idleTimer <= 0) pickNewTarget(p);
+      return;
+    }
+    const arrived = moveToward(p, dt, p.targetD, p.targetX, p.roamSpeed, p.roamMode);
+    if(arrived) goIdleRoam(p);
+  }
+
+  function assignSlots(){
+    const n = pets.length;
+    pets.forEach((p, i) => {
+      p.slotD = 0.5;
+      p.slotX = n <= 1 ? 0 : -0.72 + (1.44 * i/(n-1));
+    });
+  }
+  function updateLine(p, dt){
+    if(!p.aligned){
+      const arrived = moveToward(p, dt, p.slotD, p.slotX, 0.34, 'walk');
+      if(arrived){ p.aligned = true; p.mode = 'idle'; p.facing = 1; }
+    } else {
+      p.mode = 'idle';
+      p._breathe = Math.sin(performance.now()/700) * 0.015;
+    }
+  }
+
+  function updateRoll(p, dt){
+    p.d += p.vd*dt; p.x += p.vx*dt;
+    if(p.d < 0.05){ p.d = 0.05; p.vd *= -1; }
+    if(p.d > 0.95){ p.d = 0.95; p.vd *= -1; }
+    if(p.x < -0.95){ p.x = -0.95; p.vx *= -1; }
+    if(p.x > 0.95){ p.x = 0.95; p.vx *= -1; }
+    p.rollAngle += Math.hypot(p.vd, p.vx) * dt * 260;
+    p.mode = 'roll';
+  }
+
+  function updateTag(p, dt, cmd){
+    const isOni = p.id === cmd.oniId;
+    if(isOni){
+      let nearest = null, nd = Infinity;
+      pets.forEach(o => {
+        if(o.id !== p.id){
+          const dist = Math.hypot(o.d-p.d, (o.x-p.x)*0.6);
+          if(dist < nd){ nd = dist; nearest = o; }
+        }
+      });
+      if(nearest){
+        moveToward(p, dt, nearest.d, nearest.x, 0.58, 'dash');
+        if(nd < 0.08 && performance.now() > cmd.tagCooldownUntil){
+          cmd.oniId = nearest.id;
+          cmd.tagCooldownUntil = performance.now() + 1200;
+          speak(p, 'たっち!');
+          p.reactPulse = 0.22; nearest.reactPulse = 0.22;
+        }
+      } else {
+        p.mode = 'idle';
+      }
+    } else {
+      const oni = pets.find(o => o.id === cmd.oniId);
+      if(oni){
+        p.fleeTimer -= dt;
+        const distToOni = Math.hypot(oni.d-p.d, (oni.x-p.x)*0.6);
+        if(p.fleeTimer <= 0 || distToOni < 0.2){
+          let ang = Math.atan2(p.x-oni.x, p.d-oni.d) + (Math.random()-0.5)*1.1;
+          const dist = 0.3 + Math.random()*0.35;
+          p.targetD = clamp(p.d + Math.cos(ang)*dist*0.6, 0.05, 0.95);
+          p.targetX = clamp(p.x + Math.sin(ang)*dist, -0.95, 0.95);
+          p.fleeTimer = 0.5 + Math.random()*0.5;
+        }
+        moveToward(p, dt, p.targetD, p.targetX, 0.5, 'dash');
+      }
+    }
+  }
+
+  function render(p){
+    const proj = project(p.d, p.x);
+    const baseW = Math.min(220, W*0.42) * proj.scale;
+    const baseH = baseW / p.aspect;
+    let liftPx = 0, squashY = 1, squashX = 1;
+
+    if(p.mode === 'hop'){
+      const lift = Math.sin(Math.PI*p.bouncePhase);
+      liftPx = lift * (26*proj.scale);
+      const ground = Math.pow(1-lift, 3);
+      squashY = 1 - 0.16*ground + 0.10*(1-ground);
+      squashX = 1 + 0.16*ground - 0.10*(1-ground);
+    } else if(p.mode === 'dash'){
+      const wob = Math.sin(p.bouncePhase*Math.PI*2)*0.04;
+      squashY = 1 - Math.abs(wob); squashX = 1 + Math.abs(wob);
+    } else if(p.mode === 'walk'){
+      liftPx = Math.abs(Math.sin(p.bouncePhase*Math.PI*2)) * 5*proj.scale;
+    } else if(p.mode === 'idle'){
+      const b = p._breathe || 0;
+      squashY = 1+b; squashX = 1-b;
+    }
+
+    const reactScale = 1 + p.reactPulse;
+    if(p.reactPulse > 0) p.reactPulse *= 0.9;
+
+    const footX = proj.x, footY = proj.y;
+    const dispW = baseW * squashX * reactScale;
+    const dispH = baseH * squashY * reactScale;
+    const rotateDeg = p.mode === 'roll' ? (p.rollAngle % 360) : (p.lean*4);
+
+    p.wrapEl.style.transform = `translate(${footX}px, ${footY - liftPx}px) rotate(${rotateDeg}deg)`;
+    p.wrapEl.style.zIndex = Math.round((1-p.d)*1000);
+    p.imgEl.style.width = dispW+'px'; p.imgEl.style.height = dispH+'px';
+    p.imgEl.style.marginLeft = (-dispW/2)+'px'; p.imgEl.style.marginTop = (-dispH)+'px';
+    p.imgEl.style.transform = `scaleX(${p.facing})`;
+
+    const shScale = proj.scale * (1 - p.d*0.25);
+    const shOpacity = 0.5 * (1 - p.d*0.5) * (1 - Math.min(0.6, liftPx/40));
+    p.shadowEl.style.zIndex = Math.round((1-p.d)*1000) - 1;
+    p.shadowEl.style.transform = `translate(${footX}px, ${footY+4}px) scale(${shScale*(0.9-liftPx/160)}, ${shScale*0.5})`;
+    p.shadowEl.style.opacity = Math.max(0.08, shOpacity);
+
+    p.bubbleEl.style.left = footX+'px';
+    p.bubbleEl.style.top = (footY - dispH - liftPx)+'px';
+
+    if(activeCommand && activeCommand.type === 'tag' && activeCommand.oniId === p.id){
+      p.wrapEl.classList.add('oni');
+    } else {
+      p.wrapEl.classList.remove('oni');
+    }
+  }
+
+  let lastTime = null;
+  function loop(ts){
+    if(lastTime === null) lastTime = ts;
+    let dt = (ts - lastTime)/1000;
+    lastTime = ts;
+    if(dt > 0.1) dt = 0.1;
+
+    if(activeCommand && activeCommand.until && performance.now() > activeCommand.until){
+      activeCommand = null;
+      pets.forEach(p => goIdleRoam(p));
+      showFeedback('また自由に過ごすよ〜');
+    }
+
+    pets.forEach(p => {
+      if(activeCommand){
+        if(activeCommand.type === 'stop'){
+          p.mode = 'idle';
+          p._breathe = Math.sin(performance.now()/700) * 0.01;
+        } else if(activeCommand.type === 'line'){
+          updateLine(p, dt);
+        } else if(activeCommand.type === 'roll'){
+          updateRoll(p, dt);
+        } else if(activeCommand.type === 'tag'){
+          updateTag(p, dt, activeCommand);
+        }
+      } else {
+        updateRoam(p, dt);
+      }
+      render(p);
+    });
+
+    requestAnimationFrame(loop);
+  }
+
+  // ---- 命令 ----
+  let feedbackTimer = null;
+  function showFeedback(text){
+    commandFeedback.textContent = text;
+    commandFeedback.classList.add('show');
+    clearTimeout(feedbackTimer);
+    feedbackTimer = setTimeout(()=> commandFeedback.classList.remove('show'), 3200);
+  }
+
+  function activateCommand(type){
+    const now = performance.now();
+    if(type === 'free'){
+      activeCommand = null;
+      pets.forEach(p => goIdleRoam(p));
+      showFeedback('自由に過ごすよ〜');
+      return;
+    }
+    if(pets.length === 0){
+      showFeedback('まずは写真を選んでね');
+      return;
+    }
+    if(type === 'line'){
+      assignSlots();
+      pets.forEach(p => p.aligned = false);
+      activeCommand = { type: 'line' };
+      showFeedback('せーの、整列!');
+    } else if(type === 'roll'){
+      pets.forEach(p => {
+        const ang = Math.random()*Math.PI*2;
+        const spd = 0.5 + Math.random()*0.3;
+        p.vd = Math.cos(ang)*spd*0.6;
+        p.vx = Math.sin(ang)*spd;
+      });
+      activeCommand = { type: 'roll', until: now + 14000 };
+      showFeedback('ころころ転がるよ!');
+    } else if(type === 'tag'){
+      if(pets.length < 2){
+        showFeedback('鬼ごっこには写真が2枚以上必要だよ');
+        return;
+      }
+      const oni = pets[Math.floor(Math.random()*pets.length)];
+      pets.forEach(p => p.fleeTimer = 0);
+      activeCommand = { type: 'tag', oniId: oni.id, until: now + 25000, tagCooldownUntil: 0 };
+      showFeedback('鬼ごっこスタート!逃げろー');
+    } else if(type === 'stop'){
+      activeCommand = { type: 'stop', until: now + 5000 };
+      showFeedback('少し休憩...');
+    }
+  }
+
+  function parseCommand(text){
+    if(/(転が|ロー?リング|ロール)/.test(text)) return 'roll';
+    if(/(整列|並んで|並べ|一列)/.test(text)) return 'line';
+    if(/(鬼ごっこ|おにごっこ)/.test(text)) return 'tag';
+    if(/(止ま|ストップ|停止|待って)/.test(text)) return 'stop';
+    if(/(自由|戻|通常|やめ)/.test(text)) return 'free';
+    return null;
+  }
+
+  commandChips.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-cmd]');
+    if(!btn) return;
+    activateCommand(btn.dataset.cmd);
+  });
+  commandForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = commandInput.value.trim();
+    commandInput.value = '';
+    if(!text) return;
+    const type = parseCommand(text);
+    if(type) activateCommand(type);
+    else showFeedback('わからないな…「転がって」「整列して」「鬼ごっこして」「止まって」を試してみて');
+  });
+
+  // ---- 画像追加まわり ----
+  pickBtn.addEventListener('click', () => fileInput.click());
+  addBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    if(e.target.files && e.target.files.length) loadImageFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  ['dragenter','dragover'].forEach(evt=>{
+    window.addEventListener(evt, (e)=>{ e.preventDefault(); dragOverEl.classList.add('show'); });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    window.addEventListener(evt, (e)=>{ e.preventDefault(); dragOverEl.classList.remove('show'); });
+  });
+  window.addEventListener('drop', (e)=>{
+    e.preventDefault();
+    if(e.dataTransfer.files && e.dataTransfer.files.length) loadImageFiles(e.dataTransfer.files);
+  });
+
+  // ---- 起動 ----
+  startBtn.addEventListener('click', () => {
+    introModal.classList.add('hidden');
+    addPetFromSrc('kodomo.png');
+  });
+
+  window.addEventListener('resize', computeGeometry);
+  computeGeometry();
+  spawnMotes();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

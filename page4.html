@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>勉強部屋</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #eaf6fb;
+    --bg-soft: #f4fbfd;
+    --card: #ffffff;
+    --ink: #274653;
+    --ink-soft: #5b7c88;
+    --primary: #3aa6c7;
+    --primary-dark: #226e8a;
+    --line: #cfeaf2;
+    --shadow: 0 8px 24px rgba(58,166,199,0.14);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 8% 0%, #ffffff 0%, transparent 45%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Noto Sans JP', sans-serif;
+    min-height:100vh;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:32px 20px 80px;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex;align-items:center;gap:14px;margin-bottom:8px;
+  }
+  .logo-tab{
+    width:14px;height:44px;border-radius:6px;
+    background:linear-gradient(180deg,#7fd4ec,#3aa6c7);
+    box-shadow:var(--shadow);
+    flex-shrink:0;
+  }
+  h1.title{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:900;
+    font-size:32px;
+    margin:0;
+    color:var(--primary-dark);
+    letter-spacing:.02em;
+  }
+  p.subtitle{
+    margin:6px 0 32px 28px;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+
+  /* ---------- Home: subject grid ---------- */
+  #home-view .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+    gap:18px;
+  }
+  .subject-card{
+    position:relative;
+    background:var(--card);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:22px 16px 18px;
+    cursor:pointer;
+    border:1px solid var(--line);
+    transition:transform .15s ease, box-shadow .15s ease;
+    overflow:hidden;
+    min-height:110px;
+  }
+  .subject-card:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(58,166,199,0.22);}
+  .subject-card:focus-visible{outline:3px solid var(--primary-dark);outline-offset:2px;}
+  .subject-card .tab{
+    position:absolute;top:0;left:0;right:0;height:8px;
+  }
+  .subject-card .name{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-weight:700;
+    font-size:19px;
+    margin-top:8px;
+    color:var(--ink);
+  }
+  .subject-card .count{
+    font-size:12px;color:var(--ink-soft);margin-top:6px;
+  }
+  .subject-card .del-btn{
+    position:absolute;top:14px;right:12px;
+    background:none;border:none;color:#b7cdd4;
+    font-size:16px;cursor:pointer;line-height:1;
+    opacity:0;transition:opacity .15s;
+  }
+  .subject-card:hover .del-btn{opacity:1;}
+  .subject-card .del-btn:hover{color:#e07a7a;}
+
+  .add-card{
+    display:flex;align-items:center;justify-content:center;
+    border:2px dashed #a9d9e8;
+    border-radius:14px;
+    min-height:110px;
+    color:var(--primary-dark);
+    font-weight:700;
+    cursor:pointer;
+    background:transparent;
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:15px;
+  }
+  .add-card:hover{background:#e2f4fa;}
+
+  /* ---------- Subject view ---------- */
+  #subject-view{display:none;}
+  .back-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    background:var(--card);
+    border:1px solid var(--line);
+    color:var(--primary-dark);
+    font-weight:700;
+    font-size:14px;
+    padding:9px 16px;
+    border-radius:999px;
+    cursor:pointer;
+    box-shadow:0 2px 8px rgba(58,166,199,0.12);
+    margin-bottom:20px;
+  }
+  .back-btn:hover{background:#e2f4fa;}
+
+  .subject-header{
+    display:flex;align-items:center;gap:12px;margin-bottom:24px;
+  }
+  .subject-header .tab-chip{
+    width:12px;height:34px;border-radius:5px;
+  }
+  .subject-header h2{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:26px;margin:0;color:var(--ink);
+  }
+
+  section.panel{
+    background:var(--card);
+    border-radius:16px;
+    padding:22px;
+    box-shadow:var(--shadow);
+    border:1px solid var(--line);
+    margin-bottom:22px;
+  }
+  section.panel h3{
+    font-family:'Zen Maru Gothic', sans-serif;
+    font-size:16px;margin:0 0 4px;color:var(--primary-dark);
+  }
+  section.panel .desc{
+    font-size:12.5px;color:var(--ink-soft);margin:0 0 16px;
+  }
+
+  .file-input-row{
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  }
+  label.upload-btn{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--primary);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:700;
+    font-size:13.5px;
+    cursor:pointer;
+    transition:background .15s;
+  }
+  label.upload-btn:hover{background:var(--primary-dark);}
+  input[type=file]{display:none;}
+
+  .drive-row{display:flex;gap:8px;}
+  .drive-row input[type=text]{
+    flex:1;
+    padding:10px 14px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:var(--bg-soft);
+    font-size:13.5px;
+    color:var(--ink);
+  }
+  .drive-row input[type=text]:focus{outline:2px solid var(--primary);}
+  .drive-row button{
+    background:var(--primary-dark);
+    color:#fff;border:none;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:700;
+    font-size:13.5px;
+    cursor:pointer;
+  }
+  .drive-row button:hover{background:#184f63;}
+
+  .item-list{margin-top:16px;display:flex;flex-direction:column;gap:12px;}
+  .item-card{
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    background:var(--bg-soft);
+  }
+  .item-card .item-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;
+    font-size:13.5px;
+  }
+  .item-card .item-name{
+    font-weight:700;color:var(--ink);
+    display:flex;align-items:center;gap:8px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .item-card .badge{
+    font-size:10.5px;background:var(--primary);color:#fff;
+    padding:2px 8px;border-radius:999px;flex-shrink:0;
+  }
+  .item-card .badge.drive{background:#5a9bd4;}
+  .item-card .item-actions{display:flex;gap:8px;flex-shrink:0;}
+  .item-card .item-actions button, .item-card .item-actions a{
+    font-size:12px;border:none;background:none;color:var(--primary-dark);
+    cursor:pointer;text-decoration:underline;padding:0;
+  }
+  .item-card .item-actions .remove{color:#c96666;}
+  .item-card .preview-box{
+    display:none;
+    border-top:1px solid var(--line);
+  }
+  .item-card .preview-box.open{display:block;}
+  .item-card iframe, .item-card embed{
+    width:100%;height:420px;border:none;display:block;background:#fff;
+  }
+  .empty-note{
+    font-size:13px;color:var(--ink-soft);
+    padding:10px 2px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= HOME ================= -->
+  <div id="home-view">
+    <header class="top">
+      <div class="logo-tab"></div>
+      <h1 class="title">勉強部屋</h1>
+    </header>
+    <p class="subtitle">科目を選んで、PDFやGoogleドライブの資料をまとめよう</p>
+
+    <div class="grid" id="subject-grid"></div>
+  </div>
+
+  <!-- ================= SUBJECT PAGE ================= -->
+  <div id="subject-view">
+    <button class="back-btn" id="back-btn">← ホームに戻る</button>
+
+    <div class="subject-header">
+      <div class="tab-chip" id="subject-tab-chip"></div>
+      <h2 id="subject-title"></h2>
+    </div>
+
+    <section class="panel">
+      <h3>📄 PDFを追加</h3>
+      <p class="desc">端末内のPDFファイルを選ぶと、その場でプレビューできます。</p>
+      <div class="file-input-row">
+        <label class="upload-btn" for="pdf-input">＋ PDFを選択</label>
+        <input type="file" id="pdf-input" accept="application/pdf" multiple>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>🔗 Googleドライブのリンクを追加</h3>
+      <p class="desc">共有設定を「リンクを知っている全員が閲覧可」にしたリンクを貼ると、自動でプレビューを表示します。フォルダのリンクなら、フォルダ内の一覧を自動表示します。</p>
+      <div class="drive-row">
+        <input type="text" id="drive-input" placeholder="https://drive.google.com/file/d/........./view?usp=sharing">
+        <button id="drive-add-btn">追加</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>🗂 この科目の資料</h3>
+      <div class="item-list" id="item-list"></div>
+      <p class="empty-note" id="empty-note">まだ資料が追加されていません。</p>
+    </section>
+  </div>
+
+</div>
+
+<script>
+  // ---------- データ（ページ内メモリ保持。再読み込みで初期化されます） ----------
+  const TAB_COLORS = ["#f6a5a5","#f9c66b","#8fd19e","#7ec8e3","#b39ddb","#f49ac2"];
+
+  let state = {
+    subjects: [
+      { id: cid(), name: "国語", color: TAB_COLORS[0], items: [] },
+      { id: cid(), name: "数学", color: TAB_COLORS[1], items: [] },
+      { id: cid(), name: "英語", color: TAB_COLORS[2], items: [] },
+      { id: cid(), name: "理科", color: TAB_COLORS[3], items: [] },
+      { id: cid(), name: "社会", color: TAB_COLORS[4], items: [] },
+    ],
+    currentId: null
+  };
+
+  function cid(){ return 'id-' + Math.random().toString(36).slice(2,10); }
+
+  // ---------- ホーム画面描画 ----------
+  const homeView = document.getElementById('home-view');
+  const subjectView = document.getElementById('subject-view');
+  const grid = document.getElementById('subject-grid');
+
+  function renderHome(){
+    grid.innerHTML = '';
+    state.subjects.forEach(sub => {
+      const card = document.createElement('div');
+      card.className = 'subject-card';
+      card.tabIndex = 0;
+      card.innerHTML = `
+        <div class="tab" style="background:${sub.color}"></div>
+        <button class="del-btn" title="科目を削除">✕</button>
+        <div class="name">${escapeHtml(sub.name)}</div>
+        <div class="count">${sub.items.length} 件の資料</div>
+      `;
+      card.addEventListener('click', (e) => {
+        if (e.target.classList.contains('del-btn')) return;
+        openSubject(sub.id);
+      });
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') openSubject(sub.id);
+      });
+      card.querySelector('.del-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`「${sub.name}」を削除しますか？`)){
+          state.subjects = state.subjects.filter(s => s.id !== sub.id);
+          renderHome();
+        }
+      });
+      grid.appendChild(card);
+    });
+
+    const addCard = document.createElement('div');
+    addCard.className = 'add-card';
+    addCard.textContent = '＋ 科目を追加';
+    addCard.addEventListener('click', () => {
+      const name = prompt('新しい科目名を入力してください');
+      if (name && name.trim()){
+        const color = TAB_COLORS[state.subjects.length % TAB_COLORS.length];
+        state.subjects.push({ id: cid(), name: name.trim(), color, items: [] });
+        renderHome();
+      }
+    });
+    grid.appendChild(addCard);
+  }
+
+  // ---------- 科目ページ ----------
+  function openSubject(id){
+    state.currentId = id;
+    homeView.style.display = 'none';
+    subjectView.style.display = 'block';
+    renderSubject();
+    window.scrollTo(0,0);
+  }
+
+  function backHome(){
+    state.currentId = null;
+    subjectView.style.display = 'none';
+    homeView.style.display = 'block';
+    renderHome();
+  }
+  document.getElementById('back-btn').addEventListener('click', backHome);
+
+  function getCurrentSubject(){
+    return state.subjects.find(s => s.id === state.currentId);
+  }
+
+  function renderSubject(){
+    const sub = getCurrentSubject();
+    if (!sub) { backHome(); return; }
+    document.getElementById('subject-title').textContent = sub.name;
+    document.getElementById('subject-tab-chip').style.background = sub.color;
+    renderItemList();
+  }
+
+  function renderItemList(){
+    const sub = getCurrentSubject();
+    const list = document.getElementById('item-list');
+    const emptyNote = document.getElementById('empty-note');
+    list.innerHTML = '';
+
+    if (sub.items.length === 0){
+      emptyNote.style.display = 'block';
+      return;
+    }
+    emptyNote.style.display = 'none';
+
+    sub.items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'item-card';
+      const badgeLabel = item.type === 'pdf' ? 'PDF' : 'Drive';
+      const badgeClass = item.type === 'pdf' ? '' : 'drive';
+      card.innerHTML = `
+        <div class="item-head">
+          <div class="item-name"><span class="badge ${badgeClass}">${badgeLabel}</span>${escapeHtml(item.name)}</div>
+          <div class="item-actions">
+            <button class="toggle-preview">プレビュー</button>
+            ${item.type === 'drive' ? `<a href="${item.rawUrl}" target="_blank" rel="noopener">開く</a>` : ''}
+            <button class="remove">削除</button>
+          </div>
+        </div>
+        <div class="preview-box"></div>
+      `;
+      const previewBox = card.querySelector('.preview-box');
+      const toggleBtn = card.querySelector('.toggle-preview');
+
+      toggleBtn.addEventListener('click', () => {
+        const isOpen = previewBox.classList.contains('open');
+        if (isOpen){
+          previewBox.classList.remove('open');
+          previewBox.innerHTML = '';
+          toggleBtn.textContent = 'プレビュー';
+        } else {
+          previewBox.innerHTML = `<iframe src="${item.embedUrl}" loading="lazy"></iframe>`;
+          previewBox.classList.add('open');
+          toggleBtn.textContent = '閉じる';
+        }
+      });
+
+      card.querySelector('.remove').addEventListener('click', () => {
+        sub.items = sub.items.filter(i => i.id !== item.id);
+        renderItemList();
+      });
+
+      list.appendChild(card);
+    });
+  }
+
+  // ---------- PDFアップロード ----------
+  document.getElementById('pdf-input').addEventListener('change', (e) => {
+    const sub = getCurrentSubject();
+    Array.from(e.target.files).forEach(file => {
+      const url = URL.createObjectURL(file);
+      sub.items.push({
+        id: cid(),
+        type: 'pdf',
+        name: file.name,
+        embedUrl: url,
+        rawUrl: url
+      });
+    });
+    e.target.value = '';
+    renderItemList();
+  });
+
+  // ---------- Googleドライブリンク追加 ----------
+  document.getElementById('drive-add-btn').addEventListener('click', addDriveLink);
+  document.getElementById('drive-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addDriveLink();
+  });
+
+  function addDriveLink(){
+    const input = document.getElementById('drive-input');
+    const raw = input.value.trim();
+    if (!raw) return;
+
+    const parsed = parseDriveUrl(raw);
+    if (!parsed){
+      alert('Googleドライブのリンクとして認識できませんでした。共有リンクの形式をご確認ください。');
+      return;
+    }
+
+    const sub = getCurrentSubject();
+    sub.items.push({
+      id: cid(),
+      type: 'drive',
+      name: parsed.isFolder ? 'ドライブフォルダ' : 'ドライブファイル',
+      embedUrl: parsed.embedUrl,
+      rawUrl: raw
+    });
+    input.value = '';
+    renderItemList();
+  }
+
+  // Googleドライブの各種URL形式からファイル/フォルダIDを抽出し、
+  // 埋め込み用プレビューURLを自動生成する
+  function parseDriveUrl(url){
+    let m;
+
+    // フォルダ: https://drive.google.com/drive/folders/FOLDER_ID
+    m = url.match(/\/folders\/([-\w]{10,})/);
+    if (m){
+      return { isFolder: true, embedUrl: `https://drive.google.com/embeddedfolderview?id=${m[1]}#list` };
+    }
+
+    // ファイル: https://drive.google.com/file/d/FILE_ID/view
+    m = url.match(/\/file\/d\/([-\w]{10,})/);
+    if (m){
+      return { isFolder: false, embedUrl: `https://drive.google.com/file/d/${m[1]}/preview` };
+    }
+
+    // 汎用: ?id=FILE_ID / &id=FILE_ID
+    m = url.match(/[?&]id=([-\w]{10,})/);
+    if (m){
+      return { isFolder: false, embedUrl: `https://drive.google.com/file/d/${m[1]}/preview` };
+    }
+
+    return null;
+  }
+
+  function escapeHtml(str){
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  renderHome();
+</script>
+</body>
+</html>
