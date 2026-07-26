@@ -129,6 +129,14 @@
     box-shadow:0 4px 12px rgba(58,166,199,0.25);
   }
   .upload-btn-link:hover{background:var(--primary-dark);}
+  .upload-embed{
+    margin-top:16px;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  }
+  .upload-embed iframe{width:100%;height:260px;border:none;display:block;background:#fff;}
+  .upload-embed .embed-label{
+    font-size:11px;color:var(--ink-soft);background:var(--bg-soft);
+    padding:6px 12px;border-bottom:1px solid var(--line);
+  }
   .unset-note{
     background:var(--bg-soft);border:1px dashed var(--line);border-radius:10px;
     padding:12px 14px;font-size:12.5px;color:var(--ink-soft);line-height:1.6;
@@ -179,7 +187,7 @@
       <div class="logo-tab"></div>
       <h1 class="title">勉強部屋</h1>
     </header>
-    <p class="subtitle">科目を選んで、教材のアップロードと閲覧をしよう。<br>受験は団体戦！</p>
+    <p class="subtitle">科目を選んで、教材のアップロードと閲覧をしよう</p>
     <div class="grid" id="subject-grid"></div>
   </div>
 
@@ -400,8 +408,25 @@
       return;
     }
 
-    desc.textContent = '下のボタンからGoogleドライブのフォルダを開いて、教材を直接アップロードできます。';
-    area.innerHTML = `<a class="upload-btn-link" href="${url}" target="_blank" rel="noopener">📁 Googleドライブでアップロードする</a>`;
+    desc.textContent = '下のボタンからGoogleドライブのフォルダを開いて、教材を直接アップロードできます。フォルダの中身は下に一覧表示されます。';
+
+    const folderId = extractDriveFolderId(url);
+    const embedHtml = folderId
+      ? `<div class="upload-embed">
+           <div class="embed-label">フォルダの中身（自動更新）</div>
+           <iframe src="https://drive.google.com/embeddedfolderview?id=${folderId}#list" loading="lazy"></iframe>
+         </div>`
+      : '';
+
+    area.innerHTML = `
+      <a class="upload-btn-link" href="${url}" target="_blank" rel="noopener">📁 Googleドライブでアップロードする</a>
+      ${embedHtml}
+    `;
+  }
+
+  function extractDriveFolderId(url){
+    const m = url.match(/\/folders\/([-\w]{10,})/);
+    return m ? m[1] : null;
   }
 
   // ---------- GitHubからのPDF自動読み込み（この科目の資料） ----------
